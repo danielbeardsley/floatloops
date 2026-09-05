@@ -25,6 +25,7 @@ export type PatternStore = {
   toggleMute: (trackIndex: number) => void
   setTrackLevel: (trackIndex: number, level: number) => void
   addMeasure: () => void
+  removeMeasure: (measureIndex: number) => void
   rename: (name: string) => void
   setPlaying: (isPlaying: boolean) => void
 }
@@ -45,6 +46,8 @@ export const usePatternStore = create<PatternStore>()((set) => ({
   setTrackLevel: (trackIndex, level) =>
     set((s) => ({ pattern: edit.setTrackLevel(s.pattern, trackIndex, level) })),
   addMeasure: () => set((s) => ({ pattern: edit.addMeasure(s.pattern) })),
+  removeMeasure: (measureIndex) =>
+    set((s) => ({ pattern: edit.removeMeasure(s.pattern, measureIndex) })),
   rename: (name) => set((s) => ({ pattern: edit.renamePattern(s.pattern, name) })),
   setPlaying: (isPlaying) => set({ isPlaying }),
 }))

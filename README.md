@@ -74,8 +74,13 @@ the roadmap.
 
 Cells are `touch-action: none` so a drag paints reliably in any direction, which
 means they cannot also pan the grid. The **measure ruler** above the grid is what
-scrolls it -- drag it, or tap a measure number to jump there. The playhead scrolls
-the grid on its own while playing, except while a finger is down.
+scrolls it -- drag it, or tap a measure number to jump there. Each measure also
+carries a `×` that removes it, which closes the gap rather than truncating from
+the end, so dropping bar 2 of 4 leaves bars 1, 3 and 4 intact. It only asks for
+confirmation when the measure has something in it.
+
+The playhead scrolls the grid on its own while playing, except while a finger is
+down.
 
 ## Roadmap
 

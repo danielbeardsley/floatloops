@@ -173,6 +173,67 @@ describe('measures', () => {
   })
 })
 
+describe('removing a measure', () => {
+  function addOne() {
+    fireEvent.click(screen.getByLabelText('Add a measure'))
+  }
+
+  it('offers nothing to remove while there is only one measure', () => {
+    render(<Grid />)
+    expect(screen.queryByLabelText(/^Remove measure/)).not.toBeInTheDocument()
+  })
+
+  it('offers a remove on each measure once there are two', () => {
+    render(<Grid />)
+    addOne()
+    expect(screen.getByLabelText('Remove measure 1')).toBeInTheDocument()
+    expect(screen.getByLabelText('Remove measure 2')).toBeInTheDocument()
+  })
+
+  it('drops an empty measure without asking', () => {
+    const confirm = vi.spyOn(window, 'confirm')
+    render(<Grid />)
+    addOne()
+    fireEvent.click(screen.getByLabelText('Remove measure 2'))
+
+    expect(confirm).not.toHaveBeenCalled()
+    expect(usePatternStore.getState().pattern.measures).toBe(1)
+    expect(document.querySelectorAll('.cell')).toHaveLength(KIT.length * STEPS_PER_MEASURE)
+  })
+
+  it('asks before dropping a measure with something in it', () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(<Grid />)
+    addOne()
+    fireEvent.pointerDown(cellFor(0, STEPS_PER_MEASURE + 2))
+    fireEvent.click(screen.getByLabelText('Remove measure 2'))
+
+    expect(confirm).toHaveBeenCalled()
+    expect(usePatternStore.getState().pattern.measures).toBe(2)
+  })
+
+  it('drops it when the question is answered yes', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<Grid />)
+    addOne()
+    fireEvent.pointerDown(cellFor(0, STEPS_PER_MEASURE + 2))
+    fireEvent.click(screen.getByLabelText('Remove measure 2'))
+
+    expect(usePatternStore.getState().pattern.measures).toBe(1)
+  })
+
+  it('closes the gap rather than clearing everything after it', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<Grid />)
+    addOne()
+    // Mark the second measure, then drop the first.
+    fireEvent.pointerDown(cellFor(0, STEPS_PER_MEASURE + 3))
+    fireEvent.click(screen.getByLabelText('Remove measure 1'))
+
+    expect(isStepOn(usePatternStore.getState().pattern.tracks[0], 3)).toBe(true)
+  })
+})
+
 describe('track controls', () => {
   it('mutes a track', () => {
     render(<Grid />)

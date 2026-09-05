@@ -148,6 +148,36 @@ export function canAddMeasure(pattern: Pattern): boolean {
   return pattern.measures < MAX_MEASURES
 }
 
+/**
+ * Cuts one measure out of the middle, closing the gap behind it. Distinct from
+ * setMeasures, which can only trim from the end -- dropping a bar you do not
+ * like should not cost you every bar after it.
+ */
+export function removeMeasure(pattern: Pattern, measureIndex: number): Pattern {
+  if (!canRemoveMeasure(pattern)) return pattern
+  if (measureIndex < 0 || measureIndex >= pattern.measures) return pattern
+
+  const start = measureIndex * STEPS_PER_MEASURE
+  const tracks = pattern.tracks.map((track) => ({
+    ...track,
+    steps: [...track.steps.slice(0, start), ...track.steps.slice(start + STEPS_PER_MEASURE)],
+  }))
+
+  return revise(pattern, { measures: pattern.measures - 1, tracks })
+}
+
+export function canRemoveMeasure(pattern: Pattern): boolean {
+  return pattern.measures > 1
+}
+
+/** Whether a measure holds anything, so an empty one can be dropped silently. */
+export function measureHasHits(pattern: Pattern, measureIndex: number): boolean {
+  const start = measureIndex * STEPS_PER_MEASURE
+  return pattern.tracks.some((track) =>
+    track.steps.slice(start, start + STEPS_PER_MEASURE).some((step) => step > 0),
+  )
+}
+
 /** A recognisable beat, so a fresh app is never silent when you press play. */
 export function demoPattern(): Pattern {
   const pattern = createEmptyPattern('First Beat')

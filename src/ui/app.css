@@ -126,14 +126,37 @@
 
 .ruler__measure {
   grid-column: span 16;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   height: 28px;
   border-radius: 8px;
   background: var(--panel);
   border: 1px solid var(--line);
+  touch-action: pan-x;
+}
+
+.ruler__jump {
+  padding: 0 10px;
   color: var(--text-dim);
   font-size: 13px;
   letter-spacing: 0.1em;
-  touch-action: pan-x;
+}
+
+.ruler__remove {
+  width: 24px;
+  height: 20px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.ruler__remove:hover,
+.ruler__remove:focus-visible {
+  background: var(--accent-dim);
+  color: var(--text);
 }
 
 /* --- track column -------------------------------------------------------- */

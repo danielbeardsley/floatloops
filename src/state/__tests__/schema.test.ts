@@ -4,9 +4,12 @@ import {
   PATTERN_VERSION,
   addMeasure,
   canAddMeasure,
+  canRemoveMeasure,
   createEmptyPattern,
   demoPattern,
   isStepOn,
+  measureHasHits,
+  removeMeasure,
   setMeasures,
   setPatternBpm,
   setStep,
@@ -138,5 +141,77 @@ describe('demoPattern', () => {
   it('puts a kick on the downbeat', () => {
     const kick = pattern.tracks.find((t) => t.voiceId === 'kick')!
     expect(isStepOn(kick, 0)).toBe(true)
+  })
+})
+
+describe('removing a measure', () => {
+  /** Marks step 0 of each measure so the survivors can be told apart. */
+  function marked(measures: number) {
+    let pattern = createEmptyPattern()
+    for (let i = 1; i < measures; i += 1) pattern = addMeasure(pattern)
+    for (let m = 0; m < measures; m += 1) {
+      pattern = setStep(pattern, 0, m * STEPS_PER_MEASURE, (m + 1) / 10)
+    }
+    return pattern
+  }
+
+  it('shortens the pattern by one measure', () => {
+    const shorter = removeMeasure(marked(3), 1)
+    expect(shorter.measures).toBe(2)
+    for (const track of shorter.tracks) {
+      expect(track.steps).toHaveLength(2 * STEPS_PER_MEASURE)
+    }
+  })
+
+  it('closes the gap, keeping the measures on either side', () => {
+    const shorter = removeMeasure(marked(3), 1)
+    // Measure 1 is gone; measure 3 slides down into its place.
+    expect(shorter.tracks[0].steps[0]).toBeCloseTo(0.1)
+    expect(shorter.tracks[0].steps[STEPS_PER_MEASURE]).toBeCloseTo(0.3)
+  })
+
+  it('can drop the first measure', () => {
+    const shorter = removeMeasure(marked(3), 0)
+    expect(shorter.tracks[0].steps[0]).toBeCloseTo(0.2)
+  })
+
+  it('can drop the last measure', () => {
+    const shorter = removeMeasure(marked(3), 2)
+    expect(shorter.tracks[0].steps[STEPS_PER_MEASURE]).toBeCloseTo(0.2)
+  })
+
+  it('trims every track, not just the one that was edited', () => {
+    const shorter = removeMeasure(marked(2), 0)
+    expect(shorter.tracks.every((t) => t.steps.length === STEPS_PER_MEASURE)).toBe(true)
+  })
+
+  it('refuses to remove the only measure', () => {
+    const single = createEmptyPattern()
+    expect(removeMeasure(single, 0)).toBe(single)
+    expect(canRemoveMeasure(single)).toBe(false)
+  })
+
+  it('ignores a measure that does not exist', () => {
+    const two = marked(2)
+    expect(removeMeasure(two, 9)).toBe(two)
+    expect(removeMeasure(two, -1)).toBe(two)
+  })
+
+  it('leaves the original pattern untouched', () => {
+    const before = marked(2)
+    removeMeasure(before, 0)
+    expect(before.measures).toBe(2)
+  })
+})
+
+describe('measureHasHits', () => {
+  it('sees a hit anywhere in the measure, on any track', () => {
+    const pattern = setStep(addMeasure(createEmptyPattern()), 3, STEPS_PER_MEASURE + 7, 1)
+    expect(measureHasHits(pattern, 1)).toBe(true)
+    expect(measureHasHits(pattern, 0)).toBe(false)
+  })
+
+  it('is false for a silent measure', () => {
+    expect(measureHasHits(createEmptyPattern(), 0)).toBe(false)
   })
 })

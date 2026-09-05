@@ -1,6 +1,12 @@
 import { useCallback, useRef } from 'react'
 import { usePatternStore } from '../state/patternStore'
-import { canAddMeasure, isStepOn, totalSteps } from '../state/schema'
+import {
+  canAddMeasure,
+  canRemoveMeasure,
+  isStepOn,
+  measureHasHits,
+  totalSteps,
+} from '../state/schema'
 import { STEPS_PER_BEAT, STEPS_PER_MEASURE } from '../audio/timing'
 import { getVoice } from '../audio/kit'
 import { audition } from '../audio/audition'
@@ -77,6 +83,21 @@ export function Grid() {
     },
   })
 
+  const onRemoveMeasure = useCallback((measureIndex: number) => {
+    const store = usePatternStore.getState()
+    // Only ask when there is something to lose.
+    if (
+      measureHasHits(store.pattern, measureIndex) &&
+      !window.confirm(`Remove measure ${measureIndex + 1}? Anything in it will be lost.`)
+    ) {
+      return
+    }
+
+    store.removeMeasure(measureIndex)
+    // The measure under the playhead has moved; let it re-follow.
+    shownMeasure.current = null
+  }, [])
+
   const measures = Array.from({ length: pattern.measures }, (_, i) => i)
   const stepIndices = Array.from({ length: steps }, (_, i) => i)
 
@@ -88,15 +109,27 @@ export function Grid() {
       <div className="grid__content" style={{ ['--steps' as string]: steps }}>
         <div className="grid__corner" />
         {measures.map((measure) => (
-          <button
-            key={measure}
-            type="button"
-            className="ruler__measure"
-            data-measure={measure}
-            onClick={() => scrollToMeasure(measure)}
-          >
-            {measure + 1}
-          </button>
+          <div key={measure} className="ruler__measure" data-measure={measure}>
+            <button
+              type="button"
+              className="ruler__jump"
+              onClick={() => scrollToMeasure(measure)}
+              aria-label={`Go to measure ${measure + 1}`}
+            >
+              {measure + 1}
+            </button>
+            {canRemoveMeasure(pattern) ? (
+              <button
+                type="button"
+                className="ruler__remove"
+                onClick={() => onRemoveMeasure(measure)}
+                aria-label={`Remove measure ${measure + 1}`}
+                title={`Remove measure ${measure + 1}`}
+              >
+                &times;
+              </button>
+            ) : null}
+          </div>
         ))}
 
         {pattern.tracks.map((track, trackIndex) => {
