@@ -6,3 +6,4 @@ dist-ssr
 .vite
 coverage
 dev-dist
+*.tsbuildinfo
