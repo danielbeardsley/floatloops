@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  base: '/floatloops/',
   plugins: [
     react(),
     VitePWA({
@@ -16,7 +17,8 @@ export default defineConfig({
         background_color: '#12121a',
         display: 'standalone',
         orientation: 'any',
-        start_url: '/',
+        start_url: '/floatloops/',
+        scope: '/floatloops/',
         icons: [
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
