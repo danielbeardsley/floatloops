@@ -1,3 +1,5 @@
+import { ATTACK, LEVEL_FLOOR, TAIL, clamp, cleanupAfter, percussiveEnvelope } from './env'
+
 /**
  * Synthesised kick drum: a sine whose pitch drops fast from a click into a
  * body tone, under an exponential amplitude decay. No samples, no assets.
@@ -24,22 +26,7 @@ export const KICK_DEFAULTS: Required<KickOptions> = {
   level: 0.9,
 }
 
-/**
- * exponentialRampToValueAtTime cannot target zero, so fades run down to this
- * floor instead. -80dB is inaudible.
- */
-export const LEVEL_FLOOR = 0.0001
-
-/** A couple of milliseconds of fade-in, so the attack does not click. */
-const ATTACK = 0.002
-
-/** Extra time before stopping the oscillator, so the tail is not cut off. */
-const TAIL = 0.02
-
-function clamp(value: number, min: number, max: number, fallback: number): number {
-  if (!Number.isFinite(value)) return fallback
-  return Math.min(max, Math.max(min, value))
-}
+export { LEVEL_FLOOR }
 
 /**
  * Pure: resolves and clamps options into usable parameters. Kept separate from
@@ -78,17 +65,11 @@ export function kick(
   osc.frequency.exponentialRampToValueAtTime(p.endFreq, when + p.pitchDecay)
 
   const amp = ctx.createGain()
-  amp.gain.setValueAtTime(0, when)
-  amp.gain.linearRampToValueAtTime(p.level, when + ATTACK)
-  amp.gain.exponentialRampToValueAtTime(LEVEL_FLOOR, when + p.decay)
+  percussiveEnvelope(amp.gain, when, p.level, p.decay, ATTACK)
 
   osc.connect(amp).connect(destination)
 
-  const stopAt = when + p.decay + TAIL
   osc.start(when)
-  osc.stop(stopAt)
-  osc.onended = () => {
-    osc.disconnect()
-    amp.disconnect()
-  }
+  osc.stop(when + p.decay + TAIL)
+  cleanupAfter(osc, [osc, amp])
 }
