@@ -1,6 +1,7 @@
 import { getEngine, unlock } from '../audio/context'
 import { Sequencer } from '../audio/scheduler'
 import { usePatternStore } from './patternStore'
+import type { Pattern } from './schema'
 
 /**
  * The one Sequencer, created lazily and kept outside React alongside the audio
@@ -12,7 +13,10 @@ export function getSequencer(): Sequencer {
   if (!sequencer) {
     sequencer = new Sequencer({
       engine: getEngine(),
-      getPattern: () => usePatternStore.getState().pattern,
+      getPattern: () => {
+        const state = usePatternStore.getState()
+        return state.preview ?? state.pattern
+      },
     })
   }
   return sequencer
@@ -27,7 +31,19 @@ export async function play(): Promise<void> {
 
 export function stop(): void {
   sequencer?.stop()
-  usePatternStore.getState().setPlaying(false)
+  const store = usePatternStore.getState()
+  store.setPlaying(false)
+  store.setPreview(null)
+}
+
+/**
+ * Plays a saved pattern from the library without opening it. Restarting the
+ * sequencer is what makes the preview begin at its own downbeat.
+ */
+export async function playPreview(pattern: Pattern): Promise<void> {
+  stop()
+  usePatternStore.getState().setPreview(pattern)
+  await play()
 }
 
 export async function togglePlay(): Promise<void> {

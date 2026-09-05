@@ -9,9 +9,16 @@ import type { Pattern } from './schema'
  */
 export type PatternStore = {
   pattern: Pattern
+  /**
+   * A pattern being auditioned from the library. While set, the sequencer
+   * plays this instead of `pattern`, so previewing never disturbs the beat
+   * currently open in the sequencer.
+   */
+  preview: Pattern | null
   isPlaying: boolean
 
   setPattern: (pattern: Pattern) => void
+  setPreview: (preview: Pattern | null) => void
   toggleStep: (trackIndex: number, stepIndex: number) => void
   setStep: (trackIndex: number, stepIndex: number, value: number) => void
   setBpm: (bpm: number) => void
@@ -24,9 +31,11 @@ export type PatternStore = {
 
 export const usePatternStore = create<PatternStore>()((set) => ({
   pattern: edit.demoPattern(),
+  preview: null,
   isPlaying: false,
 
   setPattern: (pattern) => set({ pattern }),
+  setPreview: (preview) => set({ preview }),
   toggleStep: (trackIndex, stepIndex) =>
     set((s) => ({ pattern: edit.toggleStep(s.pattern, trackIndex, stepIndex) })),
   setStep: (trackIndex, stepIndex, value) =>
