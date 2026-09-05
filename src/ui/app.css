@@ -242,3 +242,173 @@
 .grid__add:disabled {
   opacity: 0.35;
 }
+
+/* --- navigation ---------------------------------------------------------- */
+
+.app__nav {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.app__link {
+  padding: 8px 16px;
+  border-radius: 999px;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 15px;
+}
+
+.app__link.active {
+  background: var(--panel-raised);
+  color: var(--text);
+}
+
+/* --- transport extras ---------------------------------------------------- */
+
+.transport__name {
+  min-width: 0;
+  width: 240px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+}
+
+.transport__save {
+  min-width: 96px;
+  padding: 13px 18px;
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  font-size: 16px;
+}
+
+.transport__save:disabled {
+  opacity: 0.6;
+}
+
+/* --- library ------------------------------------------------------------- */
+
+.library {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.library__head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.library__title {
+  margin: 0;
+  font-size: 22px;
+}
+
+.library__head .button {
+  margin-left: auto;
+  padding: 14px 22px;
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  font-size: 16px;
+}
+
+.library__head .button--primary {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+.library__message {
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1.5;
+  max-width: 42ch;
+}
+
+.library__message--error {
+  color: var(--accent);
+}
+
+.library__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+/* --- pattern card -------------------------------------------------------- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.card__shape {
+  display: block;
+  width: 100%;
+  height: 92px;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.card__body {
+  min-width: 0;
+}
+
+.card__name {
+  margin: 0;
+  font-size: 17px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card__meta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.card__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.card__button {
+  flex: 1;
+  padding: 12px 6px;
+  border-radius: 10px;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.card__button--on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
+.card__button--danger {
+  color: var(--accent);
+}
