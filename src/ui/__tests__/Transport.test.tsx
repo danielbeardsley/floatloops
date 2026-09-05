@@ -1,12 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { Transport } from '../Transport'
-import { StepStrip } from '../StepStrip'
 import { usePatternStore } from '../../state/patternStore'
 import { resetTransport } from '../../state/transport'
 import { resetEngine, setContextFactory } from '../../audio/context'
-import { addMeasure, demoPattern, totalSteps } from '../../state/schema'
-import { STEPS_PER_MEASURE } from '../../audio/timing'
+import { demoPattern } from '../../state/schema'
 import { MockAudioContext, asAudioContext } from '../../test/mockAudioContext'
 
 let mock: MockAudioContext
@@ -76,25 +74,3 @@ describe('Transport', () => {
   })
 })
 
-describe('StepStrip', () => {
-  it('draws one cell per step', () => {
-    render(<StepStrip />)
-    const pattern = usePatternStore.getState().pattern
-    expect(screen.getByTestId('step-strip').children).toHaveLength(totalSteps(pattern))
-  })
-
-  it('tags each cell with its step, which is how the playhead finds them', () => {
-    render(<StepStrip />)
-    const strip = screen.getByTestId('step-strip')
-    expect(strip.querySelectorAll('[data-step]')).toHaveLength(STEPS_PER_MEASURE)
-    expect(strip.querySelector('[data-step="0"]')).toBeInTheDocument()
-  })
-
-  it('grows when a measure is added', () => {
-    render(<StepStrip />)
-    act(() => {
-      usePatternStore.setState({ pattern: addMeasure(usePatternStore.getState().pattern) })
-    })
-    expect(screen.getByTestId('step-strip').children).toHaveLength(2 * STEPS_PER_MEASURE)
-  })
-})

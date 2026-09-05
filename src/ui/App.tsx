@@ -1,5 +1,4 @@
-import { StepStrip } from './StepStrip'
-import { Transport } from './Transport'
+import { SequencerScreen } from './SequencerScreen'
 import './app.css'
 
 export function App() {
@@ -7,10 +6,9 @@ export function App() {
     <div className="app">
       <header className="app__bar">
         <h1 className="app__title">FloatLoops</h1>
-        <Transport />
       </header>
       <main className="app__main">
-        <StepStrip />
+        <SequencerScreen />
       </main>
     </div>
   )
