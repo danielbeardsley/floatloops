@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { Grid } from '../Grid'
 import { usePatternStore } from '../../state/patternStore'
 import { useSettingsStore } from '../../state/settingsStore'
@@ -8,6 +8,19 @@ import { resetEngine, setContextFactory } from '../../audio/context'
 import { addNote, createEmptyPattern } from '../../state/schema'
 import { PITCH_COUNT, pitchName } from '../../audio/scale'
 import { MockAudioContext, asAudioContext } from '../../test/mockAudioContext'
+
+let mock: MockAudioContext
+
+/** Auditioning unlocks the context first, so let the promise settle. */
+async function settle() {
+  await act(async () => {})
+}
+
+/** How long a voice was scheduled to sound for. */
+function voiceLength(index: number) {
+  const osc = mock.oscillators[index]
+  return osc.stoppedAt! - osc.startedAt!
+}
 
 function noteCell(pitch: number, step: number): HTMLElement {
   const cell = document.querySelector<HTMLElement>(`[data-pitch="${pitch}"][data-step="${step}"]`)
@@ -31,7 +44,8 @@ beforeEach(() => {
   vi.useFakeTimers()
   resetTransport()
   resetEngine()
-  setContextFactory(() => asAudioContext(new MockAudioContext()))
+  mock = new MockAudioContext()
+  setContextFactory(() => asAudioContext(mock))
   usePatternStore.setState({ pattern: createEmptyPattern('Test'), isPlaying: false })
   useSettingsStore.setState({ followPlayhead: true, melodyOpen: true })
 })
@@ -227,6 +241,73 @@ describe('editing notes', () => {
     fireEvent.pointerUp(noteCell(3, 6))
 
     expect(notes()).toHaveLength(1)
+  })
+})
+
+describe('hearing a note as it is placed', () => {
+  function draw(pitch: number, start: number, end: number) {
+    fireEvent.pointerDown(noteCell(pitch, start))
+    if (end !== start) dragOver([noteCell(pitch, end)])
+    fireEvent.pointerUp(noteCell(pitch, end))
+  }
+
+  it('plays it, so you hear the pitch you just drew', async () => {
+    render(<Grid />)
+    draw(3, 2, 2)
+    await settle()
+
+    // The lead is one oscillator plus a sub an octave down.
+    expect(mock.oscillators).toHaveLength(2)
+  })
+
+  it('plays a short version however long the note is', async () => {
+    render(<Grid />)
+    draw(3, 2, 6)
+    await settle()
+    draw(5, 2, 2)
+    await settle()
+
+    expect(mock.oscillators).toHaveLength(4)
+    // A five-step note and a one-step note audition identically.
+    expect(voiceLength(0)).toBeCloseTo(voiceLength(2))
+  })
+
+  it('stays quiet while the song is playing, since the note will sound in place', async () => {
+    usePatternStore.setState({ isPlaying: true })
+    render(<Grid />)
+    draw(3, 2, 4)
+    await settle()
+
+    expect(mock.oscillators).toHaveLength(0)
+    // The note was still placed.
+    expect(notes()).toHaveLength(1)
+  })
+
+  it('stays quiet when the melody is muted', async () => {
+    usePatternStore.setState({
+      pattern: {
+        ...usePatternStore.getState().pattern,
+        melody: { ...usePatternStore.getState().pattern.melody, muted: true },
+      },
+    })
+    render(<Grid />)
+    draw(3, 2, 2)
+    await settle()
+
+    expect(mock.oscillators).toHaveLength(0)
+  })
+
+  it('plays the note again after an edit, at the new pitch', async () => {
+    usePatternStore.setState({
+      pattern: addNote(createEmptyPattern(), { pitch: 3, start: 2, length: 3 }),
+    })
+    render(<Grid />)
+    fireEvent.pointerDown(noteCell(3, 3))
+    dragOver([noteCell(6, 3)])
+    fireEvent.pointerUp(noteCell(6, 3))
+    await settle()
+
+    expect(mock.oscillators).toHaveLength(2)
   })
 })
 

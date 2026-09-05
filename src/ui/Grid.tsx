@@ -73,9 +73,19 @@ export function Grid() {
   }, [])
 
   const hearNote = useCallback((shape: NoteShape) => {
-    const { bpm, melody } = usePatternStore.getState().pattern
+    const store = usePatternStore.getState()
+
+    // While the sequencer is running the note will sound in its own place a
+    // moment later; auditioning on top of that just muddles the beat.
+    if (store.isPlaying) return
+
+    const { bpm, melody } = store.pattern
     if (melody.muted) return
-    void auditionNote(shape.pitch, shape.length * secondsPerStep(bpm), melody.level)
+
+    // Always a single step, however long the note is. The point is to hear
+    // which pitch it is, not to sit through a held note before drawing the
+    // next one.
+    void auditionNote(shape.pitch, secondsPerStep(bpm), melody.level)
   }, [])
 
   const editor = useNoteEditor({
