@@ -1,0 +1,47 @@
+:root {
+  /* Tablet-first: sized for ~1024x768 landscape, reflows to portrait. */
+  --bg: #12121a;
+  --panel: #1c1c27;
+  --panel-raised: #262633;
+  --line: #33334a;
+  --text: #e8e8f0;
+  --text-dim: #8f8fa6;
+  --accent: #ff5c7a;
+  --accent-dim: #7a2c3c;
+  --ok: #4ecdc4;
+  --radius: 12px;
+
+  color-scheme: dark;
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  /* The grid manages its own scrolling; the page itself never scrolls. */
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
