@@ -41,7 +41,9 @@ src/
     schema.ts        saved pattern format + pure, immutable edit helpers
     migrate.ts       turns anything out of storage into a usable Pattern
     storage.ts       IndexedDB CRUD; the only place that touches the database
+    preferences.ts   per-device settings in localStorage, guarded reads
     patternStore.ts  zustand store for the beat being edited
+    settingsStore.ts zustand store for preferences
     libraryStore.ts  zustand store for the saved list
     transport.ts     the one Sequencer, outside React
   ui/                screens and components
@@ -79,8 +81,9 @@ carries a `×` that removes it, which closes the gap rather than truncating from
 the end, so dropping bar 2 of 4 leaves bars 1, 3 and 4 intact. It only asks for
 confirmation when the measure has something in it.
 
-The playhead scrolls the grid on its own while playing, except while a finger is
-down.
+The playhead scrolls the grid on its own while playing, a measure at a time,
+except while a finger is down. The **Follow** toggle in the grid's top-left
+corner turns that off; the choice is remembered per device in localStorage.
 
 ## Roadmap
 

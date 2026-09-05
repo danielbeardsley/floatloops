@@ -10,6 +10,8 @@ import {
 import { STEPS_PER_BEAT, STEPS_PER_MEASURE } from '../audio/timing'
 import { getVoice } from '../audio/kit'
 import { audition } from '../audio/audition'
+import { useSettingsStore } from '../state/settingsStore'
+import { planFollow } from './followPlayhead'
 import { usePlayhead } from './usePlayhead'
 import { useStepPainter, type StepTarget } from './useStepPainter'
 
@@ -26,6 +28,8 @@ export function Grid() {
   const toggleMute = usePatternStore((s) => s.toggleMute)
   const setTrackLevel = usePatternStore((s) => s.setTrackLevel)
   const addMeasure = usePatternStore((s) => s.addMeasure)
+  const followPlayhead = useSettingsStore((s) => s.followPlayhead)
+  const setFollowPlayhead = useSettingsStore((s) => s.setFollowPlayhead)
 
   const steps = totalSteps(pattern)
 
@@ -69,17 +73,15 @@ export function Grid() {
 
   usePlayhead(scroller, isPlaying, {
     onStep: (step) => {
-      // Following the playhead while someone is drawing would yank the grid
-      // out from under their finger.
-      if (step === null || painting.current) {
-        shownMeasure.current = null
-        return
-      }
+      // Read through getState so toggling the preference does not re-render
+      // the whole grid.
+      const plan = planFollow(
+        { step, painting: painting.current, follow: useSettingsStore.getState().followPlayhead },
+        shownMeasure.current,
+      )
 
-      const measure = Math.floor(step / STEPS_PER_MEASURE)
-      if (measure === shownMeasure.current) return
-      shownMeasure.current = measure
-      scrollToMeasure(measure)
+      shownMeasure.current = plan.shownMeasure
+      if (plan.scrollTo !== null) scrollToMeasure(plan.scrollTo)
     },
   })
 
@@ -107,7 +109,17 @@ export function Grid() {
     // node would never fire again after the gesture started.
     <div className="grid" ref={scroller} data-testid="grid" {...painter}>
       <div className="grid__content" style={{ ['--steps' as string]: steps }}>
-        <div className="grid__corner" />
+        <div className="grid__corner">
+          <button
+            type="button"
+            className={`follow${followPlayhead ? ' follow--on' : ''}`}
+            onClick={() => setFollowPlayhead(!followPlayhead)}
+            aria-pressed={followPlayhead}
+            title="Scroll the grid to keep up with the beat"
+          >
+            Follow
+          </button>
+        </div>
         {measures.map((measure) => (
           <div key={measure} className="ruler__measure" data-measure={measure}>
             <button

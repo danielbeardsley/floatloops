@@ -116,6 +116,29 @@
   align-items: center;
 }
 
+.grid__corner {
+  display: flex;
+  align-items: center;
+  padding-right: 8px;
+}
+
+.follow {
+  width: 100%;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+.follow--on {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 .grid__corner,
 .row__label {
   position: sticky;

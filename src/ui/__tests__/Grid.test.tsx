@@ -8,6 +8,7 @@ import { resetEngine, setContextFactory } from '../../audio/context'
 import { MAX_MEASURES, createEmptyPattern, isStepOn } from '../../state/schema'
 import { STEPS_PER_MEASURE } from '../../audio/timing'
 import { KIT } from '../../audio/kit'
+import { useSettingsStore } from '../../state/settingsStore'
 import { MockAudioContext, asAudioContext } from '../../test/mockAudioContext'
 
 function cellFor(track: number, step: number): HTMLElement {
@@ -26,6 +27,7 @@ beforeEach(() => {
   resetEngine()
   setContextFactory(() => asAudioContext(new MockAudioContext()))
   usePatternStore.setState({ pattern: createEmptyPattern('Test'), isPlaying: false })
+  useSettingsStore.setState({ followPlayhead: true })
 })
 
 afterEach(() => {
@@ -231,6 +233,28 @@ describe('removing a measure', () => {
     fireEvent.click(screen.getByLabelText('Remove measure 1'))
 
     expect(isStepOn(usePatternStore.getState().pattern.tracks[0], 3)).toBe(true)
+  })
+})
+
+describe('following the playhead', () => {
+  it('is on to begin with', () => {
+    render(<Grid />)
+    expect(screen.getByRole('button', { name: 'Follow' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('can be switched off', () => {
+    render(<Grid />)
+    fireEvent.click(screen.getByRole('button', { name: 'Follow' }))
+
+    expect(useSettingsStore.getState().followPlayhead).toBe(false)
+    expect(screen.getByRole('button', { name: 'Follow' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('can be switched back on', () => {
+    render(<Grid />)
+    fireEvent.click(screen.getByRole('button', { name: 'Follow' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Follow' }))
+    expect(useSettingsStore.getState().followPlayhead).toBe(true)
   })
 })
 
