@@ -39,7 +39,10 @@ src/
     voices/          one module per drum sound
   state/
     schema.ts        saved pattern format + pure, immutable edit helpers
-    patternStore.ts  zustand store
+    migrate.ts       turns anything out of storage into a usable Pattern
+    storage.ts       IndexedDB CRUD; the only place that touches the database
+    patternStore.ts  zustand store for the beat being edited
+    libraryStore.ts  zustand store for the saved list
     transport.ts     the one Sequencer, outside React
   ui/                screens and components
   test/              mock Web Audio graph for tests
@@ -53,6 +56,19 @@ Two rules that the rest of the app depends on:
 2. **Visuals never drive audio.** Notes are scheduled ahead of time against
    `audioContext.currentTime`; the playhead is drawn separately from a
    `requestAnimationFrame` loop that only reads that clock.
+
+## Saved beats
+
+Patterns go to IndexedDB on the device, and **every read passes through
+`migratePattern`**. Nothing outside `storage.ts` ever sees a raw stored object.
+
+That layer rebuilds the track list from the current kit rather than trusting
+what was saved, which is what lets the kit gain, lose or reorder a drum without
+corrupting existing beats. A pattern written by a newer build is refused rather
+than mangled.
+
+Saving is still an explicit button press, so a reload loses unsaved work. See
+the roadmap.
 
 ## Gestures
 
@@ -68,10 +84,11 @@ the grid on its own while playing, except while a finger is down.
 - [x] **2** All 8 voices, lookahead scheduler, looping pattern, BPM
 - [x] **3** Grid UI: toggles, playhead, drag-to-paint, mute/volume
 - [x] **4** Multi-measure: horizontal scroll, `+`, playhead auto-follow
-- [ ] **5** Save/load patterns to IndexedDB
-- [ ] **6** Library screen: list, thumbnails, play in place, duplicate/delete
+- [x] **5** Save/load patterns to IndexedDB
+- [x] **6** Library screen: list, thumbnails, play in place, duplicate/delete
 - [ ] **7** PWA polish: PNG icons, wake lock, install hint, worker-based tick
-- [ ] **8** Extras: swing, accents, share-via-URL, alternate kits, undo
+- [ ] **8** Extras: swing, accents, share-via-URL, alternate kits, undo,
+      autosave the working beat so a reload cannot lose it
 
 ## Known platform traps
 
