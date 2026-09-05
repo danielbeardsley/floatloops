@@ -120,6 +120,12 @@
   display: flex;
   align-items: center;
   padding-right: 8px;
+  /* Pinned to both edges: it is the one cell in both frozen rows. */
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  background: var(--bg);
 }
 
 .follow {
@@ -139,7 +145,6 @@
   color: var(--text);
 }
 
-.grid__corner,
 .row__label {
   position: sticky;
   left: 0;
@@ -149,6 +154,11 @@
 
 .ruler__measure {
   grid-column: span 16;
+  /* Twelve tracks no longer fit on a tablet, so the grid scrolls vertically
+     and the measure numbers have to stay in view. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;

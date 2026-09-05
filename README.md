@@ -23,7 +23,7 @@ way to get standalone mode.
 | Local-only storage (IndexedDB) | No backend, no accounts, no privacy obligations. |
 | Installable PWA | Fastest path to something playable, no app store. |
 | Tablet-first, landscape | ~60px grid cells with one measure visible. |
-| 8 sounds x 16 steps per measure | Scroll sideways; `+` at the right end appends a measure. |
+| 12 sounds x 16 steps per measure | Eight drums then four synth voices; scroll sideways, `+` appends a measure. |
 | Separate library screen, not a side panel | Matches how the app is meant to be navigated. |
 | React over Preact | Preact's bundle-size win is moot for a precached offline app. |
 
@@ -35,7 +35,7 @@ src/
     timing.ts        pure step/time math (no Web Audio, fully unit tested)
     context.ts       AudioContext singleton, master bus, iOS unlock
     scheduler.ts     lookahead clock; the only thing that triggers voices
-    kit.ts           the eight sounds: order, colours, default levels
+    kit.ts           the twelve sounds: order, colours, default levels
     voices/          one module per drum sound
   state/
     schema.ts        saved pattern format + pure, immutable edit helpers

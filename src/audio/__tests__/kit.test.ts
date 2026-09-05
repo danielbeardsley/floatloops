@@ -2,8 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { KIT, VOICE_IDS, getVoice } from '../kit'
 
 describe('kit', () => {
-  it('has the eight sounds the grid expects', () => {
-    expect(KIT).toHaveLength(8)
+  it('has the twelve sounds the grid expects', () => {
+    expect(KIT).toHaveLength(12)
+  })
+
+  it('groups the drums before the synth voices', () => {
+    const synths: string[] = ['bass', 'stab', 'zap', 'sweep']
+    const firstSynth = VOICE_IDS.findIndex((id) => synths.includes(id))
+    expect(VOICE_IDS.slice(firstSynth)).toEqual(synths)
   })
 
   it('gives every voice a unique id', () => {

@@ -6,6 +6,10 @@ import { COWBELL_FREQS, COWBELL_MIX, cowbell, cowbellEnvelopePoints } from '../v
 import { resolveSnareParams, snare } from '../voices/snare'
 import { LOW_TOM_DEFAULTS, resolveTomParams } from '../voices/tom'
 import { LEVEL_FLOOR } from '../voices/env'
+import { bass } from '../voices/bass'
+import { STAB_INTERVALS, stab } from '../voices/stab'
+import { resolveZapParams, zap } from '../voices/zap'
+import { resolveSweepParams, sweep, sweepEnvelopePoints } from '../voices/sweep'
 import {
   MockAudioContext,
   MockAudioNode,
@@ -198,5 +202,126 @@ describe('toms', () => {
   it('sweeps down onto its settling pitch', () => {
     const p = resolveTomParams()
     expect(p.freq).toBe(LOW_TOM_DEFAULTS.freq)
+  })
+})
+
+describe('bass', () => {
+  function pluck(opts = {}) {
+    const ctx = new MockAudioContext()
+    bass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, opts)
+    return ctx
+  }
+
+  it('is a sawtooth, which is what gives it harmonics to filter', () => {
+    expect(pluck().oscillators[0].type).toBe('sawtooth')
+  })
+
+  it('closes the filter as the note decays', () => {
+    const events = pluck().filters[0].frequency.events
+    expect(events.at(-1)!.value).toBeLessThan(events[0].value)
+  })
+
+  it('opens the filter relative to the pitch, so every note is equally bright', () => {
+    const low = pluck({ freq: 40 }).filters[0].frequency.events[0].value
+    const high = pluck({ freq: 80 }).filters[0].frequency.events[0].value
+    expect(high).toBeCloseTo(low * 2)
+  })
+
+  it('stays clear of the Nyquist limit however bright it is asked to be', () => {
+    const events = pluck({ freq: 600, brightness: 40 }).filters[0].frequency.events
+    expect(events[0].value).toBeLessThanOrEqual(16000)
+  })
+})
+
+describe('stab', () => {
+  function hit(opts = {}) {
+    const ctx = new MockAudioContext()
+    stab(asAudioContext(ctx), asAudioNode(ctx.destination), 0, opts)
+    return ctx
+  }
+
+  it('stacks a triad', () => {
+    expect(hit().oscillators).toHaveLength(STAB_INTERVALS.length)
+  })
+
+  it('detunes them, so three saws do not sound like one loud saw', () => {
+    const pitches = hit().oscillators.map((o) => o.frequency.events[0].value)
+    expect(new Set(pitches).size).toBe(pitches.length)
+  })
+
+  it('spaces them as a minor triad above the root', () => {
+    const [root, third, fifth] = hit({ freq: 200 }).oscillators.map(
+      (o) => o.frequency.events[0].value,
+    )
+    expect(root).toBeCloseTo(200, 0)
+    expect(third / root).toBeCloseTo(STAB_INTERVALS[1], 1)
+    expect(fifth / root).toBeCloseTo(STAB_INTERVALS[2], 1)
+  })
+
+  it('runs the whole chord through one filter', () => {
+    const ctx = hit()
+    expect(ctx.filters).toHaveLength(1)
+    for (const osc of ctx.oscillators) {
+      expect(osc.outputs).toContain(ctx.filters[0])
+    }
+  })
+})
+
+describe('zap', () => {
+  function fire(opts = {}) {
+    const ctx = new MockAudioContext()
+    zap(asAudioContext(ctx), asAudioNode(ctx.destination), 0, opts)
+    return ctx
+  }
+
+  it('falls a long way, fast', () => {
+    const events = fire().oscillators[0].frequency.events
+    expect(events[0].value / events.at(-1)!.value).toBeGreaterThan(5)
+  })
+
+  it('refuses to sweep upward, which would be a different sound', () => {
+    const p = resolveZapParams({ startFreq: 200, endFreq: 4000 })
+    expect(p.endFreq).toBeLessThanOrEqual(p.startFreq)
+  })
+
+  it('finishes its sweep before the sound ends, so it lands', () => {
+    const ctx = fire({ decay: 0.2 })
+    const sweepEnds = ctx.oscillators[0].frequency.events.at(-1)!.time
+    expect(sweepEnds).toBeLessThan(0.2)
+  })
+})
+
+describe('sweep', () => {
+  function rise(opts = {}) {
+    const ctx = new MockAudioContext()
+    sweep(asAudioContext(ctx), asAudioNode(ctx.destination), 0, opts)
+    return ctx
+  }
+
+  it('climbs rather than falls', () => {
+    const events = rise().filters[0].frequency.events
+    expect(events.at(-1)!.value).toBeGreaterThan(events[0].value)
+  })
+
+  it('refuses to run downward, which would make it a fall not a riser', () => {
+    const p = resolveSweepParams({ startFreq: 4000, endFreq: 200 })
+    expect(p.endFreq).toBeGreaterThanOrEqual(p.startFreq)
+  })
+
+  it('swells and then drops away, unlike every other voice', () => {
+    const [start, peak, end] = sweepEnvelopePoints(0, 0.4, 0.6)
+    expect(peak.value).toBeGreaterThan(start.value)
+    expect(end.value).toBeLessThan(peak.value)
+  })
+
+  it('peaks before it finishes, so it arrives on the next step', () => {
+    const [, peak, end] = sweepEnvelopePoints(0, 0.4, 0.6)
+    expect(peak.time).toBeLessThan(end.time)
+  })
+
+  it('keeps every value above zero, since the whole shape is exponential', () => {
+    for (const point of sweepEnvelopePoints(0, 0, 0.6)) {
+      expect(point.value).toBeGreaterThan(0)
+    }
   })
 })

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { openDB } from 'idb'
 import { closeStorage, deletePattern, getPattern, listPatterns, savePattern } from '../storage'
 import { createEmptyPattern, demoPattern, isStepOn, toggleStep } from '../schema'
+import { KIT } from '../../audio/kit'
 
 async function wipe() {
   await closeStorage()
@@ -105,8 +106,10 @@ describe('reading old or damaged saves', () => {
       updatedAt: 1,
     })
 
+    // The saved row predates most of the kit; it comes back with a track for
+    // every drum this build has.
     const loaded = await getPattern('legacy')
-    expect(loaded?.tracks).toHaveLength(8)
+    expect(loaded?.tracks).toHaveLength(KIT.length)
     expect(isStepOn(loaded!.tracks[0], 0)).toBe(true)
   })
 
