@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { KIT } from '../kit'
 import { CLOSED_HAT_DEFAULTS, OPEN_HAT_DEFAULTS, resolveHatParams } from '../voices/hat'
 import { clapDuration, clapEnvelopePoints, resolveClapParams } from '../voices/clap'
-import { COWBELL_FREQS, cowbell } from '../voices/cowbell'
+import { COWBELL_FREQS, COWBELL_MIX, cowbell, cowbellEnvelopePoints } from '../voices/cowbell'
 import { resolveSnareParams, snare } from '../voices/snare'
 import { LOW_TOM_DEFAULTS, resolveTomParams } from '../voices/tom'
 import { LEVEL_FLOOR } from '../voices/env'
@@ -128,12 +128,69 @@ describe('snare', () => {
 })
 
 describe('cowbell', () => {
-  it('clashes two square waves through one filter', () => {
+  function ring(opts = {}) {
     const ctx = new MockAudioContext()
-    cowbell(asAudioContext(ctx), asAudioNode(ctx.destination), 0)
+    cowbell(asAudioContext(ctx), asAudioNode(ctx.destination), 0, opts)
+    return ctx
+  }
+
+  it('clashes two square waves', () => {
+    const ctx = ring()
     expect(ctx.oscillators).toHaveLength(2)
     expect(ctx.oscillators.every((o) => o.type === 'square')).toBe(true)
     expect(ctx.oscillators.map((o) => o.frequency.events[0].value)).toEqual([...COWBELL_FREQS])
+  })
+
+  it('sits the upper tone back in the mix', () => {
+    const ctx = ring()
+    // gains[0] is the envelope; the per-oscillator mixes follow.
+    const mixes = ctx.gains.slice(1).map((g) => g.gain.value)
+    expect(mixes).toEqual([...COWBELL_MIX])
+  })
+
+  it('cascades two bandpasses, which is what sharpens the ring', () => {
+    const ctx = ring()
+    expect(ctx.filters).toHaveLength(2)
+    expect(ctx.filters.every((f) => f.type === 'bandpass')).toBe(true)
+    expect(ctx.filters[0].outputs).toContain(ctx.filters[1])
+  })
+
+  it('tunes both stages together', () => {
+    const ctx = ring({ tone: 3200 })
+    expect(ctx.filters.map((f) => f.frequency.value)).toEqual([3200, 3200])
+  })
+})
+
+describe('cowbell envelope', () => {
+  const points = cowbellEnvelopePoints(0, 0.5, 0.4)
+
+  it('is struck rather than played: the attack is near instant', () => {
+    expect(points[1].time).toBeLessThan(0.002)
+    expect(points[1].value).toBe(0.5)
+  })
+
+  it('drops sharply before settling into its tail', () => {
+    expect(points[2].value).toBeLessThan(points[1].value)
+    expect(points[3].value).toBeLessThan(points[2].value)
+  })
+
+  it('schedules every point in increasing time order', () => {
+    for (let i = 1; i < points.length; i += 1) {
+      expect(points[i].time).toBeGreaterThanOrEqual(points[i - 1].time)
+    }
+  })
+
+  it('keeps its two stages in order even when tuned very short', () => {
+    const short = cowbellEnvelopePoints(0, 0.5, 0.05)
+    for (let i = 1; i < short.length; i += 1) {
+      expect(short[i].time).toBeGreaterThanOrEqual(short[i - 1].time)
+    }
+  })
+
+  it('never ramps to a value Web Audio would reject', () => {
+    for (const point of cowbellEnvelopePoints(0, 0, 0.4)) {
+      if (point.ramp === 'exponential') expect(point.value).toBeGreaterThan(0)
+    }
   })
 })
 
