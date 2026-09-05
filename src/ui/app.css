@@ -1,0 +1,114 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+.app__bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.app__title {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.app__main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* --- sound check -------------------------------------------------------- */
+
+.soundcheck {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+  padding: 32px;
+  flex-wrap: wrap;
+}
+
+.pad {
+  width: 260px;
+  height: 260px;
+  border-radius: 28px;
+  background: var(--panel-raised);
+  border: 3px solid var(--line);
+  color: var(--text-dim);
+  font-size: 22px;
+  letter-spacing: 0.2em;
+  transition:
+    transform 60ms ease-out,
+    background-color 60ms ease-out,
+    border-color 60ms ease-out;
+}
+
+.pad--hit {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  transform: scale(0.96);
+}
+
+.soundcheck__side {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 300px;
+}
+
+.button {
+  padding: 18px 24px;
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  font-size: 18px;
+}
+
+.button--primary {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.readout {
+  margin: 0;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  font-variant-numeric: tabular-nums;
+}
+
+.readout__row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.readout dt {
+  color: var(--text-dim);
+}
+
+.readout dd {
+  margin: 0;
+}
+
+.hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
