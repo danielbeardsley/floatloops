@@ -12,8 +12,10 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "idb": "^8.0.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-router-dom": "^7.18.3",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
@@ -24,6 +26,7 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^26.1.0",
     "typescript": "^5.9.0",
     "vite": "^7.0.0",
