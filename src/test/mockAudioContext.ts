@@ -71,6 +71,53 @@ export class MockOscillatorNode extends MockAudioNode {
   }
 }
 
+export class MockBiquadFilterNode extends MockAudioNode {
+  type = 'lowpass'
+  readonly frequency = new MockAudioParam()
+  readonly Q = new MockAudioParam()
+  readonly gain = new MockAudioParam()
+}
+
+export class MockAudioBuffer {
+  constructor(
+    readonly numberOfChannels: number,
+    readonly length: number,
+    readonly sampleRate: number,
+  ) {}
+
+  private readonly channels = new Map<number, Float32Array>()
+
+  getChannelData(channel: number): Float32Array {
+    let data = this.channels.get(channel)
+    if (!data) {
+      data = new Float32Array(this.length)
+      this.channels.set(channel, data)
+    }
+    return data
+  }
+}
+
+export class MockAudioBufferSourceNode extends MockAudioNode {
+  buffer: MockAudioBuffer | null = null
+  loop = false
+  startedAt: number | null = null
+  stoppedAt: number | null = null
+  onended: (() => void) | null = null
+
+  start(time: number): void {
+    this.startedAt = time
+  }
+
+  stop(time: number): void {
+    this.stoppedAt = time
+  }
+
+  /** Fires the tail-end cleanup the real node would fire on its own. */
+  finish(): void {
+    this.onended?.()
+  }
+}
+
 export class MockDynamicsCompressorNode extends MockAudioNode {
   readonly threshold = new MockAudioParam()
   readonly knee = new MockAudioParam()
@@ -81,12 +128,16 @@ export class MockDynamicsCompressorNode extends MockAudioNode {
 
 export class MockAudioContext {
   currentTime = 0
+  sampleRate = 48000
   state: AudioContextState = 'suspended'
   readonly destination = new MockAudioNode()
 
   readonly oscillators: MockOscillatorNode[] = []
   readonly gains: MockGainNode[] = []
   readonly compressors: MockDynamicsCompressorNode[] = []
+  readonly filters: MockBiquadFilterNode[] = []
+  readonly bufferSources: MockAudioBufferSourceNode[] = []
+  readonly buffers: MockAudioBuffer[] = []
 
   createOscillator(): MockOscillatorNode {
     const node = new MockOscillatorNode()
@@ -98,6 +149,24 @@ export class MockAudioContext {
     const node = new MockGainNode()
     this.gains.push(node)
     return node
+  }
+
+  createBiquadFilter(): MockBiquadFilterNode {
+    const node = new MockBiquadFilterNode()
+    this.filters.push(node)
+    return node
+  }
+
+  createBufferSource(): MockAudioBufferSourceNode {
+    const node = new MockAudioBufferSourceNode()
+    this.bufferSources.push(node)
+    return node
+  }
+
+  createBuffer(numberOfChannels: number, length: number, sampleRate: number): MockAudioBuffer {
+    const buffer = new MockAudioBuffer(numberOfChannels, length, sampleRate)
+    this.buffers.push(buffer)
+    return buffer
   }
 
   createDynamicsCompressor(): MockDynamicsCompressorNode {
@@ -126,4 +195,9 @@ export function asAudioContext(ctx: MockAudioContext): AudioContext {
 
 export function asAudioNode(node: MockAudioNode): AudioNode {
   return node as unknown as AudioNode
+}
+
+/** Every source node the context handed out, in creation order. */
+export function allSources(ctx: MockAudioContext): Array<MockOscillatorNode | MockAudioBufferSourceNode> {
+  return [...ctx.oscillators, ...ctx.bufferSources]
 }
