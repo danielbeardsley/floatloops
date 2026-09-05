@@ -51,8 +51,13 @@ export function Grid() {
     if (!track) return
 
     store.setStep(target.trackIndex, target.stepIndex, value)
-    // Hearing the drum as you draw it is how you learn which row is which.
-    if (value > 0 && !track.muted) void audition(track.voiceId, track.level)
+
+    // Hearing the drum as you draw it is how you learn which row is which --
+    // but not while the sequencer runs, where the step is about to sound in
+    // its own place and doubling it only muddles the beat.
+    if (value > 0 && !track.muted && !store.isPlaying) {
+      void audition(track.voiceId, track.level)
+    }
   }, [])
 
   // The preview changes only when the drag crosses a cell, a few times a second

@@ -115,9 +115,11 @@ Drawing a new note stays on the row it started on, because a stray row during a
 draw is easy to do by accident. Moving deliberately does not, because changing
 the row is how a wrong note gets fixed.
 
-Placing or editing a note plays it, but only for a single step whatever its real
-length, and not at all while the sequencer is running -- the note is about to
-sound in its own place, and doubling it just muddles the beat.
+Placing a drum step or a note plays it, so you learn which row is which -- but
+never while the sequencer is running, where it is about to sound in its own place
+and doubling it only muddles the beat. A note auditions for a single step
+whatever its real length, since the point is to hear the pitch, not to sit
+through a held note.
 
 Edits preview and commit on release rather than applying as the finger moves --
 dragging across a neighbouring note would otherwise consume it on the way past,

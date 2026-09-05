@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { Grid } from '../Grid'
 import { readTarget } from '../useStepPainter'
 import { usePatternStore } from '../../state/patternStore'
@@ -10,6 +10,13 @@ import { STEPS_PER_MEASURE } from '../../audio/timing'
 import { KIT } from '../../audio/kit'
 import { useSettingsStore } from '../../state/settingsStore'
 import { MockAudioContext, asAudioContext } from '../../test/mockAudioContext'
+
+let mock: MockAudioContext
+
+/** Auditioning unlocks the context first, so let the promise settle. */
+async function settle() {
+  await act(async () => {})
+}
 
 function cellFor(track: number, step: number): HTMLElement {
   const cell = document.querySelector<HTMLElement>(`[data-track="${track}"][data-step="${step}"]`)
@@ -25,7 +32,8 @@ beforeEach(() => {
   vi.useFakeTimers()
   resetTransport()
   resetEngine()
-  setContextFactory(() => asAudioContext(new MockAudioContext()))
+  mock = new MockAudioContext()
+  setContextFactory(() => asAudioContext(mock))
   usePatternStore.setState({ pattern: createEmptyPattern('Test'), isPlaying: false })
   useSettingsStore.setState({ followPlayhead: true, melodyOpen: false })
 })
@@ -83,6 +91,49 @@ describe('tapping cells', () => {
     fireEvent.pointerDown(cellFor(0, 4))
     expect(isStepOn(usePatternStore.getState().pattern.tracks[0], 5)).toBe(false)
     expect(isStepOn(usePatternStore.getState().pattern.tracks[1], 4)).toBe(false)
+  })
+})
+
+describe('hearing a drum as it is placed', () => {
+  it('plays it, so you learn which row is which', async () => {
+    render(<Grid />)
+    fireEvent.pointerDown(cellFor(0, 4))
+    await settle()
+
+    // The kick is a single oscillator.
+    expect(mock.oscillators).toHaveLength(1)
+  })
+
+  it('stays quiet while the song is playing, since the step will sound in place', async () => {
+    usePatternStore.setState({ isPlaying: true })
+    render(<Grid />)
+    fireEvent.pointerDown(cellFor(0, 4))
+    await settle()
+
+    expect(mock.oscillators).toHaveLength(0)
+    // The step was still placed.
+    expect(isStepOn(usePatternStore.getState().pattern.tracks[0], 4)).toBe(true)
+  })
+
+  it('stays quiet on a muted track', async () => {
+    render(<Grid />)
+    fireEvent.click(screen.getByLabelText(`Mute ${KIT[0].name}`))
+    fireEvent.pointerDown(cellFor(0, 4))
+    await settle()
+
+    expect(mock.oscillators).toHaveLength(0)
+  })
+
+  it('stays quiet when a step is being cleared rather than drawn', async () => {
+    render(<Grid />)
+    fireEvent.pointerDown(cellFor(0, 4))
+    fireEvent.pointerUp(cellFor(0, 4))
+    await settle()
+    const afterDrawing = mock.oscillators.length
+
+    fireEvent.pointerDown(cellFor(0, 4))
+    await settle()
+    expect(mock.oscillators).toHaveLength(afterDrawing)
   })
 })
 
