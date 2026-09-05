@@ -1,15 +1,18 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { usePatternStore } from '../state/patternStore'
 import {
   canAddMeasure,
   canRemoveMeasure,
   isStepOn,
   measureHasHits,
+  noteAt,
   totalSteps,
 } from '../state/schema'
-import { STEPS_PER_BEAT, STEPS_PER_MEASURE } from '../audio/timing'
+import { STEPS_PER_BEAT, STEPS_PER_MEASURE, secondsPerStep } from '../audio/timing'
 import { getVoice } from '../audio/kit'
-import { audition } from '../audio/audition'
+import { audition, auditionNote } from '../audio/audition'
+import { MelodyRows } from './MelodyRows'
+import { useNoteDrawer, type NoteDraft, type NoteTarget } from './useNoteDrawer'
 import { useSettingsStore } from '../state/settingsStore'
 import { planFollow } from './followPlayhead'
 import { usePlayhead } from './usePlayhead'
@@ -50,6 +53,38 @@ export function Grid() {
     if (value > 0 && !track.muted) void audition(track.voiceId, track.level)
   }, [])
 
+  // The draft note changes only when the drag crosses a cell, a few times a
+  // second at most, so React state is the right home for it -- unlike the
+  // playhead, which moves every frame.
+  const [draft, setDraft] = useState<NoteDraft | null>(null)
+
+  const noteIdAt = useCallback(({ pitch, stepIndex }: NoteTarget) => {
+    const melody = usePatternStore.getState().pattern.melody
+    return noteAt(melody, pitch, stepIndex)?.id ?? null
+  }, [])
+
+  const onCommitNote = useCallback((committed: NoteDraft) => {
+    const store = usePatternStore.getState()
+    store.addNote(committed)
+
+    const { bpm, melody } = store.pattern
+    if (!melody.muted) {
+      void auditionNote(committed.pitch, committed.length * secondsPerStep(bpm), melody.level)
+    }
+  }, [])
+
+  const drawer = useNoteDrawer({
+    container: scroller,
+    noteIdAt,
+    onRemove: (id) => usePatternStore.getState().removeNote(id),
+    onCommit: onCommitNote,
+    onDraftChange: (next) => {
+      // Drawing a note suspends playhead following, exactly as painting does.
+      painting.current = next !== null
+      setDraft(next)
+    },
+  })
+
   const painter = useStepPainter({
     container: scroller,
     isOn,
@@ -61,6 +96,30 @@ export function Grid() {
       painting.current = false
     },
   })
+
+  /**
+   * One set of handlers for both halves of the grid. Each gesture ignores
+   * events that did not start on a cell it owns, so they can safely both see
+   * every event -- and pointer capture demands a single element anyway.
+   */
+  const gestures = {
+    onPointerDown: (event: ReactPointerEvent<HTMLElement>) => {
+      painter.onPointerDown(event)
+      drawer.onPointerDown(event)
+    },
+    onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
+      painter.onPointerMove(event)
+      drawer.onPointerMove(event)
+    },
+    onPointerUp: (event: ReactPointerEvent<HTMLElement>) => {
+      painter.onPointerUp(event)
+      drawer.onPointerUp(event)
+    },
+    onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => {
+      painter.onPointerCancel(event)
+      drawer.onPointerCancel(event)
+    },
+  }
 
   const scrollToMeasure = useCallback((measure: number) => {
     const root = scroller.current
@@ -107,7 +166,7 @@ export function Grid() {
     // The paint handlers sit on the same element that takes pointer capture:
     // once captured, events stop reaching descendants, so handlers on an inner
     // node would never fire again after the gesture started.
-    <div className="grid" ref={scroller} data-testid="grid" {...painter}>
+    <div className="grid" ref={scroller} data-testid="grid" {...gestures}>
       <div className="grid__content" style={{ ['--steps' as string]: steps }}>
         <div className="grid__corner">
           <button
@@ -204,6 +263,8 @@ export function Grid() {
             }),
           ]
         })}
+
+        <MelodyRows steps={steps} draft={draft} />
       </div>
 
       <button

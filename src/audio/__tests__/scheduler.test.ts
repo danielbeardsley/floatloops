@@ -9,7 +9,7 @@ import {
   timeOfStep,
 } from '../scheduler'
 import { secondsPerStep } from '../timing'
-import { createEmptyPattern, setStep, toggleMute, type Pattern } from '../../state/schema'
+import { addNote, createEmptyPattern, setStep, toggleMute, type Pattern } from '../../state/schema'
 import { MockAudioContext, asAudioContext } from '../../test/mockAudioContext'
 import type { Engine } from '../context'
 
@@ -255,6 +255,107 @@ describe('Sequencer', () => {
     seq.start()
     seq.start()
     expect(ctx.oscillators).toHaveLength(1)
+    seq.stop()
+  })
+})
+
+describe('Sequencer and the melody', () => {
+  let ctx: MockAudioContext
+  let engine: Engine
+  let pattern: Pattern
+
+  /** Only the melody sounds, so oscillators can be attributed to notes. */
+  function noteOnly(draft: { pitch: number; start: number; length: number }): Pattern {
+    return { ...addNote(createEmptyPattern('t'), draft), bpm: BPM }
+  }
+
+  function makeSequencer() {
+    return new Sequencer({ engine, getPattern: () => pattern })
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    ctx = new MockAudioContext()
+    const master = ctx.createGain()
+    engine = { ctx: asAudioContext(ctx), master: master as unknown as GainNode }
+    pattern = noteOnly({ pitch: 0, start: 0, length: 4 })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('plays a note when its first step comes round', () => {
+    const seq = makeSequencer()
+    seq.start()
+    // The lead is one oscillator plus a sub an octave down.
+    expect(ctx.oscillators).toHaveLength(2)
+    seq.stop()
+  })
+
+  it('triggers a held note once, not on every step it covers', () => {
+    const seq = makeSequencer()
+    seq.start()
+    ctx.currentTime = 0.5
+    seq.tick()
+    expect(ctx.oscillators).toHaveLength(2)
+    seq.stop()
+  })
+
+  it('holds a long note for longer than a short one', () => {
+    const seq = makeSequencer()
+    seq.start()
+    const long = ctx.oscillators[0].stoppedAt! - ctx.oscillators[0].startedAt!
+    seq.stop()
+
+    const shortCtx = new MockAudioContext()
+    const shortMaster = shortCtx.createGain()
+    pattern = noteOnly({ pitch: 0, start: 0, length: 1 })
+    const shortSeq = new Sequencer({
+      engine: { ctx: asAudioContext(shortCtx), master: shortMaster as unknown as GainNode },
+      getPattern: () => pattern,
+    })
+    shortSeq.start()
+    const short = shortCtx.oscillators[0].stoppedAt! - shortCtx.oscillators[0].startedAt!
+    shortSeq.stop()
+
+    expect(long).toBeGreaterThan(short)
+  })
+
+  it('measures a note in steps, so it stretches with the tempo', () => {
+    const fast = makeSequencer()
+    fast.start()
+    const atDefault = ctx.oscillators[0].stoppedAt! - ctx.oscillators[0].startedAt!
+    fast.stop()
+
+    const slowCtx = new MockAudioContext()
+    const slowMaster = slowCtx.createGain()
+    pattern = { ...pattern, bpm: 60 }
+    const slow = new Sequencer({
+      engine: { ctx: asAudioContext(slowCtx), master: slowMaster as unknown as GainNode },
+      getPattern: () => pattern,
+    })
+    slow.start()
+    const atHalfSpeed = slowCtx.oscillators[0].stoppedAt! - slowCtx.oscillators[0].startedAt!
+    slow.stop()
+
+    expect(atHalfSpeed).toBeGreaterThan(atDefault)
+  })
+
+  it('stays silent when the melody is muted', () => {
+    pattern = { ...pattern, melody: { ...pattern.melody, muted: true } }
+    const seq = makeSequencer()
+    seq.start()
+    expect(ctx.oscillators).toHaveLength(0)
+    seq.stop()
+  })
+
+  it('plays drums and melody together', () => {
+    pattern = setStep(noteOnly({ pitch: 0, start: 0, length: 2 }), 0, 0, 1)
+    const seq = makeSequencer()
+    seq.start()
+    // One kick plus the lead's two oscillators.
+    expect(ctx.oscillators).toHaveLength(3)
     seq.stop()
   })
 })

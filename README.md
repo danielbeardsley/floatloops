@@ -72,6 +72,21 @@ than mangled.
 Saving is still an explicit button press, so a reload loses unsaved work. See
 the roadmap.
 
+## The melody
+
+Below the drums, a collapsible piano roll: eight pitches of A minor pentatonic,
+so no combination of notes can clash. Notes have a start and a length, snapped
+to the grid, which is why the melody is a list of `Note` objects rather than
+another grid of cells.
+
+It shares the drums' scroll container rather than having one of its own. That is
+what keeps the columns aligned and lets the ruler, the add-measure button and the
+playhead apply to both halves without any syncing code.
+
+`lead` is the only voice that is *played* rather than struck: every drum decides
+its own length, while the lead is told how long to hold, so it has a real sustain
+and release. Any future pitched voice needs that same shape.
+
 ## Gestures
 
 Cells are `touch-action: none` so a drag paints reliably in any direction, which
@@ -80,6 +95,10 @@ scrolls it -- drag it, or tap a measure number to jump there. Each measure also
 carries a `×` that removes it, which closes the gap rather than truncating from
 the end, so dropping bar 2 of 4 leaves bars 1, 3 and 4 intact. It only asks for
 confirmation when the measure has something in it.
+
+In the piano roll, press an empty cell and drag right to draw a note of that
+length; press a note to delete it. The pitch is fixed by the cell the drag starts
+on. Drawing replaces any note it overlaps, rather than stacking on top of it.
 
 The playhead scrolls the grid on its own while playing, a measure at a time,
 except while a finger is down. The **Follow** toggle in the grid's top-left

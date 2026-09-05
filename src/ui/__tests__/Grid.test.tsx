@@ -27,7 +27,7 @@ beforeEach(() => {
   resetEngine()
   setContextFactory(() => asAudioContext(new MockAudioContext()))
   usePatternStore.setState({ pattern: createEmptyPattern('Test'), isPlaying: false })
-  useSettingsStore.setState({ followPlayhead: true })
+  useSettingsStore.setState({ followPlayhead: true, melodyOpen: false })
 })
 
 afterEach(() => {

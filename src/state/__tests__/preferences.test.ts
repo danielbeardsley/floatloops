@@ -17,7 +17,7 @@ describe('loadPreferences', () => {
   })
 
   it('reads back what was saved', () => {
-    savePreferences({ followPlayhead: false })
+    savePreferences({ ...DEFAULT_PREFERENCES, followPlayhead: false })
     expect(loadPreferences().followPlayhead).toBe(false)
   })
 
@@ -44,7 +44,7 @@ describe('savePreferences', () => {
     vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
       throw new Error('quota')
     })
-    expect(() => savePreferences({ followPlayhead: false })).not.toThrow()
+    expect(() => savePreferences({ ...DEFAULT_PREFERENCES, followPlayhead: false })).not.toThrow()
   })
 })
 
@@ -54,5 +54,18 @@ describe('settings store', () => {
     expect(useSettingsStore.getState().followPlayhead).toBe(false)
     // What a fresh boot would read.
     expect(loadPreferences().followPlayhead).toBe(false)
+  })
+
+  it('keeps the piano roll closed until asked', () => {
+    expect(DEFAULT_PREFERENCES.melodyOpen).toBe(false)
+  })
+
+  it('does not drop one preference when writing another', () => {
+    useSettingsStore.getState().setMelodyOpen(true)
+    useSettingsStore.getState().setFollowPlayhead(false)
+
+    const reloaded = loadPreferences()
+    expect(reloaded.melodyOpen).toBe(true)
+    expect(reloaded.followPlayhead).toBe(false)
   })
 })

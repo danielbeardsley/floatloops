@@ -102,3 +102,56 @@ describe('migratePattern repairs bad values', () => {
     expect(migratePattern({ version: 0, tracks: [] })!.version).toBe(PATTERN_VERSION)
   })
 })
+
+describe('migratePattern and the melody', () => {
+  function withMelody(melody: unknown, measures = 1) {
+    return migratePattern({ ...createEmptyPattern(), measures, melody })!
+  }
+
+  it('gives a pattern saved before the melody existed an empty one', () => {
+    const legacy = { ...createEmptyPattern(), version: 1 }
+    delete (legacy as Partial<Record<string, unknown>>).melody
+    const migrated = migratePattern(legacy)!
+    expect(migrated.melody.notes).toEqual([])
+    expect(migrated.melody.muted).toBe(false)
+  })
+
+  it('keeps notes that make sense', () => {
+    const migrated = withMelody({
+      level: 0.5,
+      muted: true,
+      notes: [{ id: 'n1', pitch: 2, start: 4, length: 3, velocity: 1 }],
+    })
+    expect(migrated.melody.notes).toHaveLength(1)
+    expect(migrated.melody.notes[0]).toMatchObject({ pitch: 2, start: 4, length: 3 })
+    expect(migrated.melody.muted).toBe(true)
+    expect(migrated.melody.level).toBe(0.5)
+  })
+
+  it('drops a note at a pitch this build does not have', () => {
+    const migrated = withMelody({ notes: [{ pitch: 99, start: 0, length: 1 }] })
+    expect(migrated.melody.notes).toEqual([])
+  })
+
+  it('drops a note starting past the end of the pattern', () => {
+    const migrated = withMelody({ notes: [{ pitch: 0, start: 500, length: 1 }] })
+    expect(migrated.melody.notes).toEqual([])
+  })
+
+  it('clamps a note that runs off the end, since that has an obvious fix', () => {
+    const migrated = withMelody({ notes: [{ pitch: 0, start: 14, length: 99 }] })
+    expect(migrated.melody.notes[0].length).toBe(2)
+  })
+
+  it('invents an id for a note that lost one', () => {
+    const migrated = withMelody({ notes: [{ pitch: 0, start: 0, length: 1 }] })
+    expect(migrated.melody.notes[0].id.length).toBeGreaterThan(0)
+  })
+
+  it('ignores junk in the notes list without losing the good ones', () => {
+    const migrated = withMelody({
+      notes: [null, 'note', { pitch: 1, start: 2, length: 2 }, 42],
+    })
+    expect(migrated.melody.notes).toHaveLength(1)
+  })
+})

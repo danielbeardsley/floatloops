@@ -1,5 +1,15 @@
 import { VOICE_IDS, getVoice } from '../audio/kit'
-import { MAX_MEASURES, PATTERN_VERSION, createId, type Pattern, type Track } from './schema'
+import {
+  MAX_MEASURES,
+  MELODY_DEFAULTS,
+  PATTERN_VERSION,
+  createId,
+  type Melody,
+  type Note,
+  type Pattern,
+  type Track,
+} from './schema'
+import { isPitch } from '../audio/scale'
 import { STEPS_PER_MEASURE, clampBpm } from '../audio/timing'
 
 /**
@@ -54,6 +64,47 @@ function migrateTracks(value: unknown, measures: number): Track[] {
   })
 }
 
+/**
+ * Notes are dropped rather than repaired when their position makes no sense --
+ * a note at a pitch this build does not have, or starting past the end of the
+ * pattern, has no correct interpretation. Length is clamped, since a note
+ * running off the end has an obvious one.
+ */
+function migrateNotes(value: unknown, length: number): Note[] {
+  const source = Array.isArray(value) ? value : []
+  const notes: Note[] = []
+
+  for (const raw of source) {
+    if (!isRecord(raw)) continue
+
+    const pitch = Math.round(asNumber(raw.pitch, -1))
+    if (!isPitch(pitch)) continue
+
+    const start = Math.floor(asNumber(raw.start, -1))
+    if (!Number.isInteger(start) || start < 0 || start >= length) continue
+
+    notes.push({
+      id: asString(raw.id, createId()),
+      pitch,
+      start,
+      length: Math.max(1, Math.min(length - start, Math.floor(asNumber(raw.length, 1)))),
+      velocity: Math.min(1, Math.max(0, asNumber(raw.velocity, 1))),
+    })
+  }
+
+  return notes
+}
+
+/** A pattern saved before the melody existed simply gets an empty one. */
+function migrateMelody(value: unknown, length: number): Melody {
+  const record = isRecord(value) ? value : {}
+  return {
+    level: Math.min(1, Math.max(0, asNumber(record.level, MELODY_DEFAULTS.level))),
+    muted: record.muted === true,
+    notes: migrateNotes(record.notes, length),
+  }
+}
+
 export function migratePattern(raw: unknown): Pattern | null {
   if (!isRecord(raw)) return null
 
@@ -71,6 +122,7 @@ export function migratePattern(raw: unknown): Pattern | null {
     bpm: clampBpm(asNumber(raw.bpm, 110)),
     measures,
     tracks: migrateTracks(raw.tracks, measures),
+    melody: migrateMelody(raw.melody, measures * STEPS_PER_MEASURE),
     version: PATTERN_VERSION,
     createdAt: asNumber(raw.createdAt, now),
     updatedAt: asNumber(raw.updatedAt, now),

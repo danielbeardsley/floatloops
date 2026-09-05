@@ -468,3 +468,97 @@
 .card__button--danger {
   color: var(--accent);
 }
+
+/* --- piano roll ---------------------------------------------------------- */
+
+.melody-head {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+/* The row spans the full scrollable width, so its contents are pinned rather
+   than the row itself. */
+.melody-head__inner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: var(--label-w);
+}
+
+.melody-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.melody-toggle__caret {
+  font-size: 11px;
+}
+
+.melody-toggle__count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--panel-raised);
+  font-size: 12px;
+}
+
+.melody-head__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.row__label--pitch .row__name {
+  font-variant-numeric: tabular-nums;
+}
+
+.note {
+  position: relative;
+}
+
+.note--on {
+  background: var(--note-color);
+  border-color: var(--note-color);
+}
+
+/* Only the outer ends of a held note are rounded, so the run reads as one bar. */
+.note--start {
+  border-radius: 12px 0 0 12px;
+}
+
+.note--middle {
+  border-radius: 0;
+}
+
+.note--end {
+  border-radius: 0 12px 12px 0;
+}
+
+/* Fills the grid gap to the right, so a held note looks continuous rather than
+   like a row of separate blocks. */
+.note--bridge::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: -1px;
+  bottom: -1px;
+  width: var(--gap);
+  background: inherit;
+}
+
+.note--draft {
+  opacity: 0.55;
+}

@@ -12,10 +12,14 @@ const KEY = 'floatloops:preferences'
 export type Preferences = {
   /** Whether the grid scrolls to keep up with the playhead. */
   followPlayhead: boolean
+  /** Whether the piano roll is expanded. Closed by default: the drums are the
+   *  main event, and twelve tracks plus eight pitches is a lot of grid. */
+  melodyOpen: boolean
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
   followPlayhead: true,
+  melodyOpen: false,
 }
 
 export function loadPreferences(): Preferences {
@@ -27,11 +31,12 @@ export function loadPreferences(): Preferences {
     if (typeof parsed !== 'object' || parsed === null) return DEFAULT_PREFERENCES
 
     const stored = parsed as Partial<Record<keyof Preferences, unknown>>
+    const read = (key: keyof Preferences) =>
+      typeof stored[key] === 'boolean' ? (stored[key] as boolean) : DEFAULT_PREFERENCES[key]
+
     return {
-      followPlayhead:
-        typeof stored.followPlayhead === 'boolean'
-          ? stored.followPlayhead
-          : DEFAULT_PREFERENCES.followPlayhead,
+      followPlayhead: read('followPlayhead'),
+      melodyOpen: read('melodyOpen'),
     }
   } catch {
     return DEFAULT_PREFERENCES

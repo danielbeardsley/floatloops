@@ -1,5 +1,7 @@
 import type { Engine } from './context'
 import { getVoice } from './kit'
+import { lead } from './voices/lead'
+import { pitchFreq } from './scale'
 import { secondsPerStep } from './timing'
 import { totalSteps, type Pattern } from '../state/schema'
 
@@ -179,6 +181,21 @@ export class Sequencer {
       if (velocity <= 0) continue
 
       getVoice(track.voiceId).trigger(ctx, master, time, { level: track.level * velocity })
+    }
+
+    if (pattern.melody.muted) return
+
+    // A note is triggered once, on the step it starts, and told how long to
+    // hold -- the sustain lives in the voice, not in the scheduler.
+    const stepSeconds = secondsPerStep(this.bpm)
+    for (const note of pattern.melody.notes) {
+      if (note.start !== patternStep) continue
+
+      lead(ctx, master, time, {
+        freq: pitchFreq(note.pitch),
+        duration: note.length * stepSeconds,
+        level: pattern.melody.level * note.velocity,
+      })
     }
   }
 }

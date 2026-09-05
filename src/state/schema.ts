@@ -1,11 +1,12 @@
 import { VOICE_IDS, getVoice, type VoiceId } from '../audio/kit'
 import { STEPS_PER_MEASURE, clampBpm, stepCount } from '../audio/timing'
+import { isPitch } from '../audio/scale'
 
 /**
  * The saved-pattern format. Every change here needs a bump to PATTERN_VERSION
  * and a migration, because these objects outlive the code that wrote them.
  */
-export const PATTERN_VERSION = 1
+export const PATTERN_VERSION = 2
 
 /**
  * 0 means the step is off. Anything above is the hit's velocity, so accents
@@ -21,12 +22,39 @@ export type Track = {
   steps: Step[]
 }
 
+/**
+ * A melodic note. Unlike a drum step, it has a length -- which is the entire
+ * reason the melody is a list of notes rather than another grid of cells.
+ */
+export type Note = {
+  id: string
+  /** Index into the scale, 0 being the lowest pitch. */
+  pitch: number
+  /** Step the note begins on. */
+  start: number
+  /** How many steps it is held for, at least one. */
+  length: number
+  velocity: number
+}
+
+export type Melody = {
+  level: number
+  muted: boolean
+  notes: Note[]
+}
+
+export const MELODY_DEFAULTS: Omit<Melody, 'notes'> = {
+  level: 0.6,
+  muted: false,
+}
+
 export type Pattern = {
   id: string
   name: string
   bpm: number
   measures: number
   tracks: Track[]
+  melody: Melody
   version: number
   createdAt: number
   updatedAt: number
@@ -58,6 +86,7 @@ export function createEmptyPattern(name = 'New Beat', measures = 1): Pattern {
       muted: false,
       steps: emptySteps(measures),
     })),
+    melody: { ...MELODY_DEFAULTS, notes: [] },
     version: PATTERN_VERSION,
     createdAt: now,
     updatedAt: now,
@@ -78,6 +107,8 @@ function mapTrack(pattern: Pattern, index: number, fn: (track: Track) => Track):
 export function totalSteps(pattern: Pattern): number {
   return stepCount(pattern.measures)
 }
+
+const totalStepsOf = totalSteps
 
 export function isStepOn(track: Track, stepIndex: number): boolean {
   return (track.steps[stepIndex] ?? 0) > 0
@@ -137,7 +168,11 @@ export function setMeasures(pattern: Pattern, measures: number): Pattern {
     return { ...track, steps }
   })
 
-  return revise(pattern, { measures: next, tracks })
+  return revise(pattern, {
+    measures: next,
+    tracks,
+    melody: { ...pattern.melody, notes: fitNotes(pattern.melody.notes, length) },
+  })
 }
 
 export function addMeasure(pattern: Pattern): Pattern {
@@ -158,12 +193,26 @@ export function removeMeasure(pattern: Pattern, measureIndex: number): Pattern {
   if (measureIndex < 0 || measureIndex >= pattern.measures) return pattern
 
   const start = measureIndex * STEPS_PER_MEASURE
+  const end = start + STEPS_PER_MEASURE
+
   const tracks = pattern.tracks.map((track) => ({
     ...track,
-    steps: [...track.steps.slice(0, start), ...track.steps.slice(start + STEPS_PER_MEASURE)],
+    steps: [...track.steps.slice(0, start), ...track.steps.slice(end)],
   }))
 
-  return revise(pattern, { measures: pattern.measures - 1, tracks })
+  // A note straddling the cut has no sensible new length, so it goes with the
+  // measure. Notes after the cut slide back to close the gap.
+  const notes = pattern.melody.notes
+    .filter((note) => note.start + note.length <= start || note.start >= end)
+    .map((note) =>
+      note.start >= end ? { ...note, start: note.start - STEPS_PER_MEASURE } : note,
+    )
+
+  return revise(pattern, {
+    measures: pattern.measures - 1,
+    tracks,
+    melody: { ...pattern.melody, notes },
+  })
 }
 
 export function canRemoveMeasure(pattern: Pattern): boolean {
@@ -173,9 +222,93 @@ export function canRemoveMeasure(pattern: Pattern): boolean {
 /** Whether a measure holds anything, so an empty one can be dropped silently. */
 export function measureHasHits(pattern: Pattern, measureIndex: number): boolean {
   const start = measureIndex * STEPS_PER_MEASURE
-  return pattern.tracks.some((track) =>
-    track.steps.slice(start, start + STEPS_PER_MEASURE).some((step) => step > 0),
+  const end = start + STEPS_PER_MEASURE
+
+  const drums = pattern.tracks.some((track) =>
+    track.steps.slice(start, end).some((step) => step > 0),
   )
+  const melody = pattern.melody.notes.some(
+    (note) => note.start < end && note.start + note.length > start,
+  )
+
+  return drums || melody
+}
+
+/* --- melody -------------------------------------------------------------- */
+
+export function noteCovers(note: Note, step: number): boolean {
+  return step >= note.start && step < note.start + note.length
+}
+
+export function noteAt(melody: Melody, pitch: number, step: number): Note | undefined {
+  return melody.notes.find((note) => note.pitch === pitch && noteCovers(note, step))
+}
+
+/** Which part of a held note a given step is, so the cell can be drawn right. */
+export function noteRole(note: Note, step: number): 'single' | 'start' | 'middle' | 'end' {
+  const last = note.start + note.length - 1
+  if (note.start === last) return 'single'
+  if (step === note.start) return 'start'
+  if (step === last) return 'end'
+  return 'middle'
+}
+
+export type NoteDraft = {
+  pitch: number
+  start: number
+  length: number
+  velocity?: number
+}
+
+/**
+ * Adds a note, dropping anything it overlaps at the same pitch. Last write
+ * wins: drawing across an existing note replaces it rather than producing two
+ * notes fighting over the same steps.
+ */
+export function addNote(pattern: Pattern, draft: NoteDraft): Pattern {
+  if (!isPitch(draft.pitch)) return pattern
+
+  const length = totalStepsOf(pattern)
+  const start = Math.max(0, Math.min(length - 1, Math.floor(draft.start)))
+  const span = Math.max(1, Math.min(length - start, Math.floor(draft.length)))
+  const end = start + span
+
+  const kept = pattern.melody.notes.filter(
+    (note) =>
+      note.pitch !== draft.pitch || note.start + note.length <= start || note.start >= end,
+  )
+
+  const note: Note = {
+    id: createId(),
+    pitch: draft.pitch,
+    start,
+    length: span,
+    velocity: Math.min(1, Math.max(0, draft.velocity ?? FULL_VELOCITY)),
+  }
+
+  return revise(pattern, { melody: { ...pattern.melody, notes: [...kept, note] } })
+}
+
+export function removeNote(pattern: Pattern, id: string): Pattern {
+  const notes = pattern.melody.notes.filter((note) => note.id !== id)
+  if (notes.length === pattern.melody.notes.length) return pattern
+  return revise(pattern, { melody: { ...pattern.melody, notes } })
+}
+
+export function setMelodyLevel(pattern: Pattern, level: number): Pattern {
+  const melody = { ...pattern.melody, level: Math.min(1, Math.max(0, level)) }
+  return revise(pattern, { melody })
+}
+
+export function toggleMelodyMute(pattern: Pattern): Pattern {
+  return revise(pattern, { melody: { ...pattern.melody, muted: !pattern.melody.muted } })
+}
+
+/** Trims notes to fit a pattern of `length` steps, dropping any left stranded. */
+function fitNotes(notes: Note[], length: number): Note[] {
+  return notes
+    .filter((note) => note.start < length)
+    .map((note) => ({ ...note, length: Math.min(note.length, length - note.start) }))
 }
 
 /** A recognisable beat, so a fresh app is never silent when you press play. */

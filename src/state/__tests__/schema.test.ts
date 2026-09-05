@@ -3,17 +3,24 @@ import {
   MAX_MEASURES,
   PATTERN_VERSION,
   addMeasure,
+  addNote,
   canAddMeasure,
   canRemoveMeasure,
   createEmptyPattern,
   demoPattern,
   isStepOn,
   measureHasHits,
+  noteAt,
+  noteCovers,
+  noteRole,
   removeMeasure,
+  removeNote,
+  setMelodyLevel,
   setMeasures,
   setPatternBpm,
   setStep,
   setTrackLevel,
+  toggleMelodyMute,
   toggleMute,
   toggleStep,
   totalSteps,
@@ -213,5 +220,130 @@ describe('measureHasHits', () => {
 
   it('is false for a silent measure', () => {
     expect(measureHasHits(createEmptyPattern(), 0)).toBe(false)
+  })
+})
+
+describe('melody notes', () => {
+  const empty = createEmptyPattern()
+
+  it('starts with no notes', () => {
+    expect(empty.melody.notes).toEqual([])
+  })
+
+  it('adds a note with a start and a length', () => {
+    const p = addNote(empty, { pitch: 2, start: 4, length: 3 })
+    expect(p.melody.notes).toHaveLength(1)
+    expect(p.melody.notes[0]).toMatchObject({ pitch: 2, start: 4, length: 3 })
+  })
+
+  it('covers exactly the steps it spans', () => {
+    const note = addNote(empty, { pitch: 2, start: 4, length: 3 }).melody.notes[0]
+    expect(noteCovers(note, 3)).toBe(false)
+    expect(noteCovers(note, 4)).toBe(true)
+    expect(noteCovers(note, 6)).toBe(true)
+    expect(noteCovers(note, 7)).toBe(false)
+  })
+
+  it('replaces a note it overlaps, rather than stacking on top of it', () => {
+    const first = addNote(empty, { pitch: 2, start: 4, length: 4 })
+    const second = addNote(first, { pitch: 2, start: 6, length: 4 })
+    expect(second.melody.notes).toHaveLength(1)
+    expect(second.melody.notes[0].start).toBe(6)
+  })
+
+  it('leaves notes at other pitches alone', () => {
+    const first = addNote(empty, { pitch: 2, start: 4, length: 4 })
+    const second = addNote(first, { pitch: 3, start: 4, length: 4 })
+    expect(second.melody.notes).toHaveLength(2)
+  })
+
+  it('keeps a neighbouring note that only touches, without overlapping', () => {
+    const first = addNote(empty, { pitch: 1, start: 0, length: 4 })
+    const second = addNote(first, { pitch: 1, start: 4, length: 4 })
+    expect(second.melody.notes).toHaveLength(2)
+  })
+
+  it('refuses a pitch the scale does not have', () => {
+    expect(addNote(empty, { pitch: 99, start: 0, length: 1 })).toBe(empty)
+  })
+
+  it('never lets a note run past the end of the pattern', () => {
+    const p = addNote(empty, { pitch: 0, start: 14, length: 40 })
+    const note = p.melody.notes[0]
+    expect(note.start + note.length).toBeLessThanOrEqual(totalSteps(p))
+  })
+
+  it('never creates a note shorter than one step', () => {
+    expect(addNote(empty, { pitch: 0, start: 0, length: 0 }).melody.notes[0].length).toBe(1)
+  })
+
+  it('removes by id', () => {
+    const p = addNote(empty, { pitch: 2, start: 4, length: 3 })
+    expect(removeNote(p, p.melody.notes[0].id).melody.notes).toEqual([])
+  })
+
+  it('ignores a removal of something that is not there', () => {
+    expect(removeNote(empty, 'nope')).toBe(empty)
+  })
+
+  it('finds the note under a step', () => {
+    const p = addNote(empty, { pitch: 2, start: 4, length: 3 })
+    expect(noteAt(p.melody, 2, 5)).toBeDefined()
+    expect(noteAt(p.melody, 2, 9)).toBeUndefined()
+    expect(noteAt(p.melody, 3, 5)).toBeUndefined()
+  })
+
+  it('describes which part of a held note a step is', () => {
+    const held = addNote(empty, { pitch: 0, start: 2, length: 3 }).melody.notes[0]
+    expect(noteRole(held, 2)).toBe('start')
+    expect(noteRole(held, 3)).toBe('middle')
+    expect(noteRole(held, 4)).toBe('end')
+
+    const single = addNote(empty, { pitch: 0, start: 2, length: 1 }).melody.notes[0]
+    expect(noteRole(single, 2)).toBe('single')
+  })
+
+  it('mutes and sets the melody level', () => {
+    expect(toggleMelodyMute(empty).melody.muted).toBe(true)
+    expect(setMelodyLevel(empty, 5).melody.level).toBe(1)
+  })
+})
+
+describe('melody survives measure changes', () => {
+  function twoBars() {
+    return addMeasure(createEmptyPattern())
+  }
+
+  it('drops notes left stranded when the pattern shrinks', () => {
+    const p = addNote(twoBars(), { pitch: 0, start: STEPS_PER_MEASURE + 4, length: 2 })
+    expect(setMeasures(p, 1).melody.notes).toEqual([])
+  })
+
+  it('truncates a note that would hang off the new end', () => {
+    const p = addNote(twoBars(), { pitch: 0, start: STEPS_PER_MEASURE - 2, length: 8 })
+    const shrunk = setMeasures(p, 1)
+    const note = shrunk.melody.notes[0]
+    expect(note.start + note.length).toBe(STEPS_PER_MEASURE)
+  })
+
+  it('slides notes back when an earlier measure is removed', () => {
+    const p = addNote(twoBars(), { pitch: 1, start: STEPS_PER_MEASURE + 3, length: 2 })
+    expect(removeMeasure(p, 0).melody.notes[0].start).toBe(3)
+  })
+
+  it('drops a note that was inside the removed measure', () => {
+    const p = addNote(twoBars(), { pitch: 1, start: 3, length: 2 })
+    expect(removeMeasure(p, 0).melody.notes).toEqual([])
+  })
+
+  it('drops a note straddling the cut, which has no sensible new length', () => {
+    const p = addNote(twoBars(), { pitch: 1, start: STEPS_PER_MEASURE - 2, length: 6 })
+    expect(removeMeasure(p, 1).melody.notes).toEqual([])
+  })
+
+  it('counts notes when deciding whether a measure is empty', () => {
+    const p = addNote(twoBars(), { pitch: 1, start: STEPS_PER_MEASURE + 3, length: 2 })
+    expect(measureHasHits(p, 1)).toBe(true)
+    expect(measureHasHits(p, 0)).toBe(false)
   })
 })
