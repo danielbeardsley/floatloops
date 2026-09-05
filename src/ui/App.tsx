@@ -1,15 +1,36 @@
+import { HashRouter, NavLink, Route, Routes } from 'react-router-dom'
 import { SequencerScreen } from './SequencerScreen'
+import { LibraryScreen } from './LibraryScreen'
 import './app.css'
 
+/**
+ * Hash routing so the back button behaves once the app is installed to the
+ * home screen. The audio engine and sequencer live outside the router, so
+ * moving between screens never interrupts playback.
+ */
 export function App() {
   return (
-    <div className="app">
-      <header className="app__bar">
-        <h1 className="app__title">FloatLoops</h1>
-      </header>
-      <main className="app__main">
-        <SequencerScreen />
-      </main>
-    </div>
+    <HashRouter>
+      <div className="app">
+        <header className="app__bar">
+          <h1 className="app__title">FloatLoops</h1>
+          <nav className="app__nav">
+            <NavLink to="/" end className="app__link">
+              Sequencer
+            </NavLink>
+            <NavLink to="/library" className="app__link">
+              Library
+            </NavLink>
+          </nav>
+        </header>
+
+        <main className="app__main">
+          <Routes>
+            <Route path="/" element={<SequencerScreen />} />
+            <Route path="/library" element={<LibraryScreen />} />
+          </Routes>
+        </main>
+      </div>
+    </HashRouter>
   )
 }
