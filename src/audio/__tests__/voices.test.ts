@@ -2,14 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { KIT } from '../kit'
 import { CLOSED_HAT_DEFAULTS, OPEN_HAT_DEFAULTS, resolveHatParams } from '../voices/hat'
 import { clapDuration, clapEnvelopePoints, resolveClapParams } from '../voices/clap'
-import { COWBELL_FREQS, COWBELL_MIX, cowbell, cowbellEnvelopePoints } from '../voices/cowbell'
 import { resolveSnareParams, snare } from '../voices/snare'
 import { LOW_TOM_DEFAULTS, resolveTomParams } from '../voices/tom'
 import { LEVEL_FLOOR } from '../voices/env'
 import { bass } from '../voices/bass'
 import { STAB_INTERVALS, stab } from '../voices/stab'
-import { resolveZapParams, zap } from '../voices/zap'
-import { resolveSweepParams, sweep, sweepEnvelopePoints } from '../voices/sweep'
 import {
   MockAudioContext,
   MockAudioNode,
@@ -131,73 +128,6 @@ describe('snare', () => {
   })
 })
 
-describe('cowbell', () => {
-  function ring(opts = {}) {
-    const ctx = new MockAudioContext()
-    cowbell(asAudioContext(ctx), asAudioNode(ctx.destination), 0, opts)
-    return ctx
-  }
-
-  it('clashes two square waves', () => {
-    const ctx = ring()
-    expect(ctx.oscillators).toHaveLength(2)
-    expect(ctx.oscillators.every((o) => o.type === 'square')).toBe(true)
-    expect(ctx.oscillators.map((o) => o.frequency.events[0].value)).toEqual([...COWBELL_FREQS])
-  })
-
-  it('sits the upper tone back in the mix', () => {
-    const ctx = ring()
-    // gains[0] is the envelope; the per-oscillator mixes follow.
-    const mixes = ctx.gains.slice(1).map((g) => g.gain.value)
-    expect(mixes).toEqual([...COWBELL_MIX])
-  })
-
-  it('cascades two bandpasses, which is what sharpens the ring', () => {
-    const ctx = ring()
-    expect(ctx.filters).toHaveLength(2)
-    expect(ctx.filters.every((f) => f.type === 'bandpass')).toBe(true)
-    expect(ctx.filters[0].outputs).toContain(ctx.filters[1])
-  })
-
-  it('tunes both stages together', () => {
-    const ctx = ring({ tone: 3200 })
-    expect(ctx.filters.map((f) => f.frequency.value)).toEqual([3200, 3200])
-  })
-})
-
-describe('cowbell envelope', () => {
-  const points = cowbellEnvelopePoints(0, 0.5, 0.4)
-
-  it('is struck rather than played: the attack is near instant', () => {
-    expect(points[1].time).toBeLessThan(0.002)
-    expect(points[1].value).toBe(0.5)
-  })
-
-  it('drops sharply before settling into its tail', () => {
-    expect(points[2].value).toBeLessThan(points[1].value)
-    expect(points[3].value).toBeLessThan(points[2].value)
-  })
-
-  it('schedules every point in increasing time order', () => {
-    for (let i = 1; i < points.length; i += 1) {
-      expect(points[i].time).toBeGreaterThanOrEqual(points[i - 1].time)
-    }
-  })
-
-  it('keeps its two stages in order even when tuned very short', () => {
-    const short = cowbellEnvelopePoints(0, 0.5, 0.05)
-    for (let i = 1; i < short.length; i += 1) {
-      expect(short[i].time).toBeGreaterThanOrEqual(short[i - 1].time)
-    }
-  })
-
-  it('never ramps to a value Web Audio would reject', () => {
-    for (const point of cowbellEnvelopePoints(0, 0, 0.4)) {
-      if (point.ramp === 'exponential') expect(point.value).toBeGreaterThan(0)
-    }
-  })
-})
-
 describe('toms', () => {
   it('sweeps down onto its settling pitch', () => {
     const p = resolveTomParams()
@@ -267,61 +197,3 @@ describe('stab', () => {
   })
 })
 
-describe('zap', () => {
-  function fire(opts = {}) {
-    const ctx = new MockAudioContext()
-    zap(asAudioContext(ctx), asAudioNode(ctx.destination), 0, opts)
-    return ctx
-  }
-
-  it('falls a long way, fast', () => {
-    const events = fire().oscillators[0].frequency.events
-    expect(events[0].value / events.at(-1)!.value).toBeGreaterThan(5)
-  })
-
-  it('refuses to sweep upward, which would be a different sound', () => {
-    const p = resolveZapParams({ startFreq: 200, endFreq: 4000 })
-    expect(p.endFreq).toBeLessThanOrEqual(p.startFreq)
-  })
-
-  it('finishes its sweep before the sound ends, so it lands', () => {
-    const ctx = fire({ decay: 0.2 })
-    const sweepEnds = ctx.oscillators[0].frequency.events.at(-1)!.time
-    expect(sweepEnds).toBeLessThan(0.2)
-  })
-})
-
-describe('sweep', () => {
-  function rise(opts = {}) {
-    const ctx = new MockAudioContext()
-    sweep(asAudioContext(ctx), asAudioNode(ctx.destination), 0, opts)
-    return ctx
-  }
-
-  it('climbs rather than falls', () => {
-    const events = rise().filters[0].frequency.events
-    expect(events.at(-1)!.value).toBeGreaterThan(events[0].value)
-  })
-
-  it('refuses to run downward, which would make it a fall not a riser', () => {
-    const p = resolveSweepParams({ startFreq: 4000, endFreq: 200 })
-    expect(p.endFreq).toBeGreaterThanOrEqual(p.startFreq)
-  })
-
-  it('swells and then drops away, unlike every other voice', () => {
-    const [start, peak, end] = sweepEnvelopePoints(0, 0.4, 0.6)
-    expect(peak.value).toBeGreaterThan(start.value)
-    expect(end.value).toBeLessThan(peak.value)
-  })
-
-  it('peaks before it finishes, so it arrives on the next step', () => {
-    const [, peak, end] = sweepEnvelopePoints(0, 0.4, 0.6)
-    expect(peak.time).toBeLessThan(end.time)
-  })
-
-  it('keeps every value above zero, since the whole shape is exponential', () => {
-    for (const point of sweepEnvelopePoints(0, 0, 0.6)) {
-      expect(point.value).toBeGreaterThan(0)
-    }
-  })
-})

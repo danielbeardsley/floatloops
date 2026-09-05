@@ -31,23 +31,26 @@ describe('migratePattern rebuilds tracks from the current kit', () => {
   })
 
   it('drops a drum this build no longer has', () => {
+    // The cowbell was a real voice once; a beat saved with it still loads.
     const saved = {
       ...createEmptyPattern(),
-      tracks: [{ voiceId: 'vibraslap', level: 1, muted: false, steps: [1] }],
+      tracks: [{ voiceId: 'cowbell', level: 1, muted: false, steps: [1] }],
     }
-    expect(migratePattern(saved)!.tracks).toHaveLength(KIT.length)
+    const migrated = migratePattern(saved)!
+    expect(migrated.tracks).toHaveLength(KIT.length)
+    expect(migrated.tracks.some((t) => (t.voiceId as string) === 'cowbell')).toBe(false)
   })
 
   it('keeps the steps of a drum even when the kit order changed', () => {
     const saved = {
       ...createEmptyPattern(),
-      tracks: [{ voiceId: 'cowbell', level: 0.5, muted: true, steps: [0, 1] }],
+      tracks: [{ voiceId: 'stab', level: 0.5, muted: true, steps: [0, 1] }],
     }
     const migrated = migratePattern(saved)!
-    const cowbell = migrated.tracks.find((t) => t.voiceId === 'cowbell')!
-    expect(isStepOn(cowbell, 1)).toBe(true)
-    expect(cowbell.muted).toBe(true)
-    expect(cowbell.level).toBe(0.5)
+    const stab = migrated.tracks.find((t) => t.voiceId === 'stab')!
+    expect(isStepOn(stab, 1)).toBe(true)
+    expect(stab.muted).toBe(true)
+    expect(stab.level).toBe(0.5)
   })
 })
 
