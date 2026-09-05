@@ -1,5 +1,11 @@
-import { useEffect, type RefObject } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import { getSequencer } from '../state/transport'
+
+export type PlayheadOptions = {
+  className?: string
+  /** Called when the playhead lands on a new step, or null when it stops. */
+  onStep?: (step: number | null) => void
+}
 
 /**
  * Moves a highlight class along elements tagged with data-step, driven by an
@@ -12,8 +18,14 @@ import { getSequencer } from '../state/transport'
 export function usePlayhead(
   container: RefObject<HTMLElement | null>,
   isPlaying: boolean,
-  className = 'is-playing',
+  options: PlayheadOptions = {},
 ): void {
+  const { className = 'is-playing' } = options
+
+  // Held in a ref so a caller's inline callback cannot restart the loop.
+  const onStep = useRef(options.onStep)
+  onStep.current = options.onStep
+
   useEffect(() => {
     const root = container.current
     if (!root) return
@@ -25,7 +37,6 @@ export function usePlayhead(
     const clear = () => {
       for (const el of lit) el.classList.remove(className)
       lit = []
-      litStep = null
     }
 
     const loop = () => {
@@ -36,8 +47,9 @@ export function usePlayhead(
         if (step !== null) {
           lit = Array.from(root.querySelectorAll(`[data-step="${step}"]`))
           for (const el of lit) el.classList.add(className)
-          litStep = step
         }
+        litStep = step
+        onStep.current?.(step)
       }
 
       frame = requestAnimationFrame(loop)
