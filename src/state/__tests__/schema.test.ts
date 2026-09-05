@@ -24,6 +24,7 @@ import {
   toggleMute,
   toggleStep,
   totalSteps,
+  updateNote,
 } from '../schema'
 import { STEPS_PER_MEASURE } from '../../audio/timing'
 import { KIT } from '../../audio/kit'
@@ -345,5 +346,59 @@ describe('melody survives measure changes', () => {
     const p = addNote(twoBars(), { pitch: 1, start: STEPS_PER_MEASURE + 3, length: 2 })
     expect(measureHasHits(p, 1)).toBe(true)
     expect(measureHasHits(p, 0)).toBe(false)
+  })
+})
+
+describe('updating a note', () => {
+  const one = addNote(createEmptyPattern(), { pitch: 2, start: 4, length: 3 })
+  const id = one.melody.notes[0].id
+
+  it('moves it', () => {
+    const moved = updateNote(one, id, { pitch: 2, start: 8, length: 3 })
+    expect(moved.melody.notes).toHaveLength(1)
+    expect(moved.melody.notes[0]).toMatchObject({ start: 8, length: 3 })
+  })
+
+  it('resizes it', () => {
+    expect(updateNote(one, id, { pitch: 2, start: 4, length: 6 }).melody.notes[0].length).toBe(6)
+  })
+
+  it('changes its pitch', () => {
+    expect(updateNote(one, id, { pitch: 5, start: 4, length: 3 }).melody.notes[0].pitch).toBe(5)
+  })
+
+  it('keeps its identity, so it is the same note afterwards', () => {
+    expect(updateNote(one, id, { pitch: 2, start: 8, length: 3 }).melody.notes[0].id).toBe(id)
+  })
+
+  it('does not collide with itself when barely moved', () => {
+    const nudged = updateNote(one, id, { pitch: 2, start: 5, length: 3 })
+    expect(nudged.melody.notes).toHaveLength(1)
+  })
+
+  it('replaces a different note it is dragged onto', () => {
+    const two = addNote(one, { pitch: 2, start: 10, length: 2 })
+    const dragged = updateNote(two, id, { pitch: 2, start: 9, length: 3 })
+    expect(dragged.melody.notes).toHaveLength(1)
+    expect(dragged.melody.notes[0].id).toBe(id)
+  })
+
+  it('leaves notes at other pitches alone', () => {
+    const two = addNote(one, { pitch: 5, start: 4, length: 3 })
+    expect(updateNote(two, id, { pitch: 2, start: 8, length: 3 }).melody.notes).toHaveLength(2)
+  })
+
+  it('will not push a note past the end of the pattern', () => {
+    const p = updateNote(one, id, { pitch: 2, start: 14, length: 9 })
+    const note = p.melody.notes[0]
+    expect(note.start + note.length).toBeLessThanOrEqual(totalSteps(p))
+  })
+
+  it('ignores an id that is not there', () => {
+    expect(updateNote(one, 'nope', { pitch: 2, start: 0, length: 1 })).toBe(one)
+  })
+
+  it('ignores a pitch the scale does not have', () => {
+    expect(updateNote(one, id, { pitch: 99, start: 0, length: 1 })).toBe(one)
   })
 })

@@ -140,6 +140,96 @@ describe('drawing notes', () => {
   })
 })
 
+describe('editing notes', () => {
+  /** A note on row 3 covering steps 2, 3 and 4. */
+  function withNote() {
+    usePatternStore.setState({
+      pattern: addNote(createEmptyPattern(), { pitch: 3, start: 2, length: 3 }),
+    })
+    render(<Grid />)
+  }
+
+  it('dragging the right edge extends it', () => {
+    withNote()
+    fireEvent.pointerDown(noteCell(3, 4))
+    dragOver([noteCell(3, 7)])
+    fireEvent.pointerUp(noteCell(3, 7))
+
+    expect(notes()[0]).toMatchObject({ start: 2, length: 6 })
+  })
+
+  it('dragging the right edge inward shrinks it', () => {
+    withNote()
+    fireEvent.pointerDown(noteCell(3, 4))
+    dragOver([noteCell(3, 3)])
+    fireEvent.pointerUp(noteCell(3, 3))
+
+    expect(notes()[0]).toMatchObject({ start: 2, length: 2 })
+  })
+
+  it('dragging the left edge extends it backwards, leaving the end put', () => {
+    withNote()
+    fireEvent.pointerDown(noteCell(3, 2))
+    dragOver([noteCell(3, 0)])
+    fireEvent.pointerUp(noteCell(3, 0))
+
+    expect(notes()[0]).toMatchObject({ start: 0, length: 5 })
+  })
+
+  it('dragging the middle moves it without changing its length', () => {
+    withNote()
+    fireEvent.pointerDown(noteCell(3, 3))
+    dragOver([noteCell(3, 6)])
+    fireEvent.pointerUp(noteCell(3, 6))
+
+    expect(notes()[0]).toMatchObject({ start: 5, length: 3 })
+  })
+
+  it('dragging the middle to another row changes its pitch', () => {
+    withNote()
+    fireEvent.pointerDown(noteCell(3, 3))
+    dragOver([noteCell(6, 3)])
+    fireEvent.pointerUp(noteCell(6, 3))
+
+    expect(notes()[0]).toMatchObject({ pitch: 6, start: 2, length: 3 })
+  })
+
+  it('shows the edit before it is committed, and only once', () => {
+    withNote()
+    fireEvent.pointerDown(noteCell(3, 3))
+    dragOver([noteCell(3, 6)])
+
+    // Drawn in the new place...
+    expect(noteCell(3, 5).className).toContain('note--draft')
+    // ...and gone from the old one, so it moves rather than clones.
+    expect(noteCell(3, 2).className).not.toContain('note--on')
+    // Nothing is stored until the finger lifts.
+    expect(notes()[0]).toMatchObject({ start: 2 })
+  })
+
+  it('a one-step note grows whichever way it is pulled', () => {
+    usePatternStore.setState({
+      pattern: addNote(createEmptyPattern(), { pitch: 2, start: 8, length: 1 }),
+    })
+    render(<Grid />)
+
+    fireEvent.pointerDown(noteCell(2, 8))
+    dragOver([noteCell(2, 5)])
+    fireEvent.pointerUp(noteCell(2, 5))
+
+    expect(notes()[0]).toMatchObject({ start: 5, length: 4 })
+  })
+
+  it('an edit never leaves a second copy behind', () => {
+    withNote()
+    fireEvent.pointerDown(noteCell(3, 3))
+    dragOver([noteCell(3, 6)])
+    fireEvent.pointerUp(noteCell(3, 6))
+
+    expect(notes()).toHaveLength(1)
+  })
+})
+
 describe('removing notes', () => {
   it('a tap on a note deletes it', () => {
     usePatternStore.setState({
@@ -147,20 +237,21 @@ describe('removing notes', () => {
     })
     render(<Grid />)
     fireEvent.pointerDown(noteCell(3, 3))
+    fireEvent.pointerUp(noteCell(3, 3))
 
     expect(notes()).toEqual([])
   })
 
-  it('deleting does not start drawing a new note', () => {
+  it('a drag that returns to where it started is an edit, not a delete', () => {
     usePatternStore.setState({
       pattern: addNote(createEmptyPattern(), { pitch: 3, start: 2, length: 3 }),
     })
     render(<Grid />)
     fireEvent.pointerDown(noteCell(3, 3))
-    dragOver([noteCell(3, 6)])
-    fireEvent.pointerUp(noteCell(3, 6))
+    dragOver([noteCell(3, 6), noteCell(3, 3)])
+    fireEvent.pointerUp(noteCell(3, 3))
 
-    expect(notes()).toEqual([])
+    expect(notes()).toHaveLength(1)
   })
 })
 

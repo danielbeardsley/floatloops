@@ -289,6 +289,29 @@ export function addNote(pattern: Pattern, draft: NoteDraft): Pattern {
   return revise(pattern, { melody: { ...pattern.melody, notes: [...kept, note] } })
 }
 
+/**
+ * Moves or resizes an existing note, keeping its identity and velocity. Overlap
+ * rules apply against the *other* notes -- a note never collides with itself.
+ */
+export function updateNote(pattern: Pattern, id: string, draft: NoteDraft): Pattern {
+  const existing = pattern.melody.notes.find((note) => note.id === id)
+  if (!existing || !isPitch(draft.pitch)) return pattern
+
+  const length = totalStepsOf(pattern)
+  const start = Math.max(0, Math.min(length - 1, Math.floor(draft.start)))
+  const span = Math.max(1, Math.min(length - start, Math.floor(draft.length)))
+  const end = start + span
+
+  const kept = pattern.melody.notes.filter(
+    (note) =>
+      note.id !== id &&
+      (note.pitch !== draft.pitch || note.start + note.length <= start || note.start >= end),
+  )
+
+  const updated: Note = { ...existing, pitch: draft.pitch, start, length: span }
+  return revise(pattern, { melody: { ...pattern.melody, notes: [...kept, updated] } })
+}
+
 export function removeNote(pattern: Pattern, id: string): Pattern {
   const notes = pattern.melody.notes.filter((note) => note.id !== id)
   if (notes.length === pattern.melody.notes.length) return pattern

@@ -567,3 +567,39 @@
 .note--draft {
   opacity: 0.55;
 }
+
+/* A grab bar on each end of a note, so it is visible that the edges drag. */
+.note--start::before,
+.note--end::before,
+.note--single::before {
+  content: '';
+  position: absolute;
+  top: 30%;
+  bottom: 30%;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--bg);
+  opacity: 0.45;
+}
+
+.note--start::before,
+.note--single::before {
+  left: 5px;
+}
+
+.note--end::before {
+  right: 5px;
+}
+
+/* A one-step note is both edges at once, so it gets both marks. */
+.note--single::after {
+  content: '';
+  position: absolute;
+  top: 30%;
+  bottom: 30%;
+  right: 5px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--bg);
+  opacity: 0.45;
+}

@@ -1,8 +1,8 @@
 import { noteAt, noteRole, type Melody } from '../state/schema'
-import type { NoteDraft } from './useNoteDrawer'
+import type { NotePreview, NoteRole } from './noteEdits'
 
 export type CellFill = {
-  role: 'single' | 'start' | 'middle' | 'end'
+  role: NoteRole
   /** True while the note is still being dragged out and not yet committed. */
   draft: boolean
   /** The committed note under this cell, if any. */
@@ -13,33 +13,32 @@ export type CellFill = {
  * What to draw in one piano-roll cell.
  *
  * The note being dragged wins over whatever is underneath, because committing
- * replaces overlapping notes -- so the preview should show what you are about
- * to get, not what is there now.
+ * replaces overlapping notes -- so the preview shows what you are about to get,
+ * not what is there now. A note being edited is hidden wherever it used to be,
+ * so it appears to move rather than to be duplicated.
  */
 export function cellFill(
   melody: Melody,
-  draft: NoteDraft | null,
+  preview: NotePreview | null,
   pitch: number,
   step: number,
 ): CellFill | null {
-  if (draft && draft.pitch === pitch) {
-    const last = draft.start + draft.length - 1
-    if (step >= draft.start && step <= last) {
-      return {
-        role: roleWithin(draft.start, last, step),
-        draft: true,
-        noteId: null,
-      }
+  if (preview && preview.shape.pitch === pitch) {
+    const { start, length } = preview.shape
+    const last = start + length - 1
+    if (step >= start && step <= last) {
+      return { role: roleWithin(start, last, step), draft: true, noteId: null }
     }
   }
 
   const note = noteAt(melody, pitch, step)
   if (!note) return null
+  if (preview && preview.editing === note.id) return null
 
   return { role: noteRole(note, step), draft: false, noteId: note.id }
 }
 
-function roleWithin(start: number, last: number, step: number): CellFill['role'] {
+function roleWithin(start: number, last: number, step: number): NoteRole {
   if (start === last) return 'single'
   if (step === start) return 'start'
   if (step === last) return 'end'

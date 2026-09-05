@@ -27,6 +27,7 @@ export type PatternStore = {
   addMeasure: () => void
   removeMeasure: (measureIndex: number) => void
   addNote: (draft: edit.NoteDraft) => void
+  updateNote: (id: string, draft: edit.NoteDraft) => void
   removeNote: (id: string) => void
   setMelodyLevel: (level: number) => void
   toggleMelodyMute: () => void
@@ -53,6 +54,7 @@ export const usePatternStore = create<PatternStore>()((set) => ({
   removeMeasure: (measureIndex) =>
     set((s) => ({ pattern: edit.removeMeasure(s.pattern, measureIndex) })),
   addNote: (draft) => set((s) => ({ pattern: edit.addNote(s.pattern, draft) })),
+  updateNote: (id, draft) => set((s) => ({ pattern: edit.updateNote(s.pattern, id, draft) })),
   removeNote: (id) => set((s) => ({ pattern: edit.removeNote(s.pattern, id) })),
   setMelodyLevel: (level) => set((s) => ({ pattern: edit.setMelodyLevel(s.pattern, level) })),
   toggleMelodyMute: () => set((s) => ({ pattern: edit.toggleMelodyMute(s.pattern) })),

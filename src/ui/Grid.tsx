@@ -6,13 +6,15 @@ import {
   isStepOn,
   measureHasHits,
   noteAt,
+  noteRole,
   totalSteps,
 } from '../state/schema'
 import { STEPS_PER_BEAT, STEPS_PER_MEASURE, secondsPerStep } from '../audio/timing'
 import { getVoice } from '../audio/kit'
 import { audition, auditionNote } from '../audio/audition'
 import { MelodyRows } from './MelodyRows'
-import { useNoteDrawer, type NoteDraft, type NoteTarget } from './useNoteDrawer'
+import { useNoteEditor, type NoteTarget } from './useNoteEditor'
+import type { NotePreview, NoteShape } from './noteEdits'
 import { useSettingsStore } from '../state/settingsStore'
 import { planFollow } from './followPlayhead'
 import { usePlayhead } from './usePlayhead'
@@ -53,35 +55,46 @@ export function Grid() {
     if (value > 0 && !track.muted) void audition(track.voiceId, track.level)
   }, [])
 
-  // The draft note changes only when the drag crosses a cell, a few times a
-  // second at most, so React state is the right home for it -- unlike the
-  // playhead, which moves every frame.
-  const [draft, setDraft] = useState<NoteDraft | null>(null)
+  // The preview changes only when the drag crosses a cell, a few times a second
+  // at most, so React state is the right home for it -- unlike the playhead,
+  // which moves every frame.
+  const [preview, setPreview] = useState<NotePreview | null>(null)
 
-  const noteIdAt = useCallback(({ pitch, stepIndex }: NoteTarget) => {
+  const noteUnder = useCallback(({ pitch, stepIndex }: NoteTarget) => {
     const melody = usePatternStore.getState().pattern.melody
-    return noteAt(melody, pitch, stepIndex)?.id ?? null
-  }, [])
+    const note = noteAt(melody, pitch, stepIndex)
+    if (!note) return null
 
-  const onCommitNote = useCallback((committed: NoteDraft) => {
-    const store = usePatternStore.getState()
-    store.addNote(committed)
-
-    const { bpm, melody } = store.pattern
-    if (!melody.muted) {
-      void auditionNote(committed.pitch, committed.length * secondsPerStep(bpm), melody.level)
+    return {
+      id: note.id,
+      role: noteRole(note, stepIndex),
+      shape: { pitch: note.pitch, start: note.start, length: note.length },
     }
   }, [])
 
-  const drawer = useNoteDrawer({
+  const hearNote = useCallback((shape: NoteShape) => {
+    const { bpm, melody } = usePatternStore.getState().pattern
+    if (melody.muted) return
+    void auditionNote(shape.pitch, shape.length * secondsPerStep(bpm), melody.level)
+  }, [])
+
+  const editor = useNoteEditor({
     container: scroller,
-    noteIdAt,
+    noteUnder,
+    totalSteps: () => totalSteps(usePatternStore.getState().pattern),
+    onDraw: (shape) => {
+      usePatternStore.getState().addNote(shape)
+      hearNote(shape)
+    },
+    onEdit: (id, shape) => {
+      usePatternStore.getState().updateNote(id, shape)
+      hearNote(shape)
+    },
     onRemove: (id) => usePatternStore.getState().removeNote(id),
-    onCommit: onCommitNote,
-    onDraftChange: (next) => {
-      // Drawing a note suspends playhead following, exactly as painting does.
+    onPreviewChange: (next) => {
+      // Editing a note suspends playhead following, exactly as painting does.
       painting.current = next !== null
-      setDraft(next)
+      setPreview(next)
     },
   })
 
@@ -105,19 +118,19 @@ export function Grid() {
   const gestures = {
     onPointerDown: (event: ReactPointerEvent<HTMLElement>) => {
       painter.onPointerDown(event)
-      drawer.onPointerDown(event)
+      editor.onPointerDown(event)
     },
     onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
       painter.onPointerMove(event)
-      drawer.onPointerMove(event)
+      editor.onPointerMove(event)
     },
     onPointerUp: (event: ReactPointerEvent<HTMLElement>) => {
       painter.onPointerUp(event)
-      drawer.onPointerUp(event)
+      editor.onPointerUp(event)
     },
     onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => {
       painter.onPointerCancel(event)
-      drawer.onPointerCancel(event)
+      editor.onPointerCancel(event)
     },
   }
 
@@ -264,7 +277,7 @@ export function Grid() {
           ]
         })}
 
-        <MelodyRows steps={steps} draft={draft} />
+        <MelodyRows steps={steps} preview={preview} />
       </div>
 
       <button

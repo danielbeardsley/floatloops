@@ -3,7 +3,7 @@ import { useSettingsStore } from '../state/settingsStore'
 import { PITCHES_TOP_DOWN, pitchName } from '../audio/scale'
 import { STEPS_PER_BEAT, STEPS_PER_MEASURE } from '../audio/timing'
 import { bridgesGap, cellFill, pitchColor } from './melodyCells'
-import type { NoteDraft } from './useNoteDrawer'
+import type { NotePreview } from './noteEdits'
 
 /**
  * The piano roll, rendered as more rows of the same grid the drums live in.
@@ -12,7 +12,13 @@ import type { NoteDraft } from './useNoteDrawer'
  * lined up, the ruler and the add-measure button applicable to both, and the
  * playhead sweeping across the whole thing for free.
  */
-export function MelodyRows({ steps, draft }: { steps: number; draft: NoteDraft | null }) {
+export function MelodyRows({
+  steps,
+  preview,
+}: {
+  steps: number
+  preview: NotePreview | null
+}) {
   const melody = usePatternStore((s) => s.pattern.melody)
   const toggleMelodyMute = usePatternStore((s) => s.toggleMelodyMute)
   const setMelodyLevel = usePatternStore((s) => s.setMelodyLevel)
@@ -77,7 +83,7 @@ export function MelodyRows({ steps, draft }: { steps: number; draft: NoteDraft |
               <span className="row__name">{pitchName(pitch)}</span>
             </div>,
             ...stepIndices.map((step) => {
-              const fill = cellFill(melody, draft, pitch, step)
+              const fill = cellFill(melody, preview, pitch, step)
               const classes = [
                 'cell',
                 'note',

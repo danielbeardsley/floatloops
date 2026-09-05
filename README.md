@@ -100,9 +100,24 @@ carries a `×` that removes it, which closes the gap rather than truncating from
 the end, so dropping bar 2 of 4 leaves bars 1, 3 and 4 intact. It only asks for
 confirmation when the measure has something in it.
 
-In the piano roll, press an empty cell and drag right to draw a note of that
-length; press a note to delete it. The pitch is fixed by the cell the drag starts
-on. Drawing replaces any note it overlaps, rather than stacking on top of it.
+In the piano roll, what a press means depends on the cell it lands on:
+
+| Cell | Gesture |
+| --- | --- |
+| empty | drag right to draw a note of that length |
+| a note's first cell | drag the left edge; the right edge stays put |
+| a note's last cell | drag the right edge |
+| a note's middle | move it -- length fixed, and the row under the finger sets the pitch |
+| a one-step note | it is both edges at once, so it grows whichever way it is pulled |
+| a note, tapped without dragging | delete |
+
+Drawing a new note stays on the row it started on, because a stray row during a
+draw is easy to do by accident. Moving deliberately does not, because changing
+the row is how a wrong note gets fixed.
+
+Edits preview and commit on release rather than applying as the finger moves --
+dragging across a neighbouring note would otherwise consume it on the way past,
+with no way back. Committing replaces any note it overlaps.
 
 The playhead scrolls the grid on its own while playing, a measure at a time,
 except while a finger is down. The **Follow** toggle in the grid's top-left
