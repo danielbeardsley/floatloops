@@ -40,29 +40,30 @@ export function MelodyRows({ steps, draft }: { steps: number; draft: NoteDraft |
             ) : null}
           </button>
 
-          {open ? (
-            <span className="melody-head__controls">
-              <button
-                type="button"
-                className="row__mute"
-                onClick={toggleMelodyMute}
-                aria-pressed={melody.muted}
-                aria-label={`${melody.muted ? 'Unmute' : 'Mute'} melody`}
-              >
-                M
-              </button>
-              <input
-                type="range"
-                className="row__level"
-                min={0}
-                max={1}
-                step={0.05}
-                value={melody.level}
-                onChange={(e) => setMelodyLevel(Number(e.target.value))}
-                aria-label="Melody volume"
-              />
-            </span>
-          ) : null}
+          {/* Shown whether or not the roll is expanded: the melody keeps
+              playing when the section is collapsed, so its volume has to stay
+              reachable, exactly like every drum track's does. */}
+          <span className="melody-head__controls">
+            <button
+              type="button"
+              className="row__mute"
+              onClick={toggleMelodyMute}
+              aria-pressed={melody.muted}
+              aria-label={`${melody.muted ? 'Unmute' : 'Mute'} melody`}
+            >
+              M
+            </button>
+            <input
+              type="range"
+              className="row__level"
+              min={0}
+              max={1}
+              step={0.05}
+              value={melody.level}
+              onChange={(e) => setMelodyLevel(Number(e.target.value))}
+              aria-label="Melody volume"
+            />
+          </span>
         </div>
       </div>
 

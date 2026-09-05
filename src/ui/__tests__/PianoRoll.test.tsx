@@ -48,7 +48,7 @@ describe('the melody section', () => {
     useSettingsStore.setState({ melodyOpen: false })
     render(<Grid />)
     expect(document.querySelectorAll('[data-pitch]')).toHaveLength(0)
-    expect(screen.getByRole('button', { name: /melody/i })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /^melody/i })).toHaveAttribute(
       'aria-expanded',
       'false',
     )
@@ -57,7 +57,7 @@ describe('the melody section', () => {
   it('expands to a row per pitch', () => {
     useSettingsStore.setState({ melodyOpen: false })
     render(<Grid />)
-    fireEvent.click(screen.getByRole('button', { name: /melody/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^melody/i }))
 
     expect(useSettingsStore.getState().melodyOpen).toBe(true)
     expect(document.querySelectorAll('[data-pitch]')).toHaveLength(PITCH_COUNT * 16)
@@ -76,7 +76,7 @@ describe('the melody section', () => {
     })
     useSettingsStore.setState({ melodyOpen: false })
     render(<Grid />)
-    expect(screen.getByRole('button', { name: /melody/i })).toHaveTextContent('1')
+    expect(screen.getByRole('button', { name: /^melody/i })).toHaveTextContent('1')
   })
 })
 
@@ -165,6 +165,24 @@ describe('removing notes', () => {
 })
 
 describe('melody controls', () => {
+  it('stays reachable while the section is collapsed', () => {
+    useSettingsStore.setState({ melodyOpen: false })
+    render(<Grid />)
+
+    // The melody still plays when collapsed, so its volume must still be here.
+    expect(screen.getByLabelText('Melody volume')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mute melody')).toBeInTheDocument()
+  })
+
+  it('sets the volume without expanding the section', () => {
+    useSettingsStore.setState({ melodyOpen: false })
+    render(<Grid />)
+    fireEvent.change(screen.getByLabelText('Melody volume'), { target: { value: '0.15' } })
+
+    expect(usePatternStore.getState().pattern.melody.level).toBeCloseTo(0.15)
+    expect(useSettingsStore.getState().melodyOpen).toBe(false)
+  })
+
   it('mutes the melody', () => {
     render(<Grid />)
     fireEvent.click(screen.getByLabelText('Mute melody'))

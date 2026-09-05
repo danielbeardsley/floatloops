@@ -487,7 +487,12 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  width: var(--label-w);
+  /* Wider than the track column, because the toggle and the controls share it.
+     The row spans the full grid and holds no cells, so there is nothing to
+     overlap. */
+  width: 300px;
+  padding-right: 12px;
+  background: var(--bg);
 }
 
 .melody-toggle {

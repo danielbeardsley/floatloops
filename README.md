@@ -79,6 +79,10 @@ so no combination of notes can clash. Notes have a start and a length, snapped
 to the grid, which is why the melody is a list of `Note` objects rather than
 another grid of cells.
 
+Its mute and volume sit in the section header and stay visible when the roll is
+collapsed -- the melody still plays either way, so its level has to stay
+reachable, exactly like a drum track's.
+
 It shares the drums' scroll container rather than having one of its own. That is
 what keeps the columns aligned and lets the ruler, the add-measure button and the
 playhead apply to both halves without any syncing code.
