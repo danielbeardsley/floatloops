@@ -4,6 +4,7 @@ import { loadPreferences, savePreferences, type Preferences } from './preference
 export type SettingsStore = Preferences & {
   setFollowPlayhead: (followPlayhead: boolean) => void
   setMelodyOpen: (melodyOpen: boolean) => void
+  setDrumsOpen: (drumsOpen: boolean) => void
 }
 
 /** Writes the whole preference set, so one setting cannot drop another. */
@@ -11,6 +12,7 @@ function persist(state: SettingsStore, change: Partial<Preferences>): Preference
   const next: Preferences = {
     followPlayhead: state.followPlayhead,
     melodyOpen: state.melodyOpen,
+    drumsOpen: state.drumsOpen,
     ...change,
   }
   savePreferences(next)
@@ -22,4 +24,5 @@ export const useSettingsStore = create<SettingsStore>()((set) => ({
 
   setFollowPlayhead: (followPlayhead) => set((s) => persist(s, { followPlayhead })),
   setMelodyOpen: (melodyOpen) => set((s) => persist(s, { melodyOpen })),
+  setDrumsOpen: (drumsOpen) => set((s) => persist(s, { drumsOpen })),
 }))

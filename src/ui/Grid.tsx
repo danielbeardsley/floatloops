@@ -9,9 +9,9 @@ import {
   noteRole,
   totalSteps,
 } from '../state/schema'
-import { STEPS_PER_BEAT, STEPS_PER_MEASURE, secondsPerStep } from '../audio/timing'
-import { getVoice } from '../audio/kit'
+import { secondsPerStep } from '../audio/timing'
 import { audition, auditionNote } from '../audio/audition'
+import { DrumRows } from './DrumRows'
 import { MelodyRows } from './MelodyRows'
 import { useNoteEditor, type NoteTarget } from './useNoteEditor'
 import type { NotePreview, NoteShape } from './noteEdits'
@@ -31,8 +31,6 @@ export function Grid() {
 
   const pattern = usePatternStore((s) => s.pattern)
   const isPlaying = usePatternStore((s) => s.isPlaying)
-  const toggleMute = usePatternStore((s) => s.toggleMute)
-  const setTrackLevel = usePatternStore((s) => s.setTrackLevel)
   const addMeasure = usePatternStore((s) => s.addMeasure)
   const followPlayhead = useSettingsStore((s) => s.followPlayhead)
   const setFollowPlayhead = useSettingsStore((s) => s.setFollowPlayhead)
@@ -215,7 +213,6 @@ export function Grid() {
   }, [])
 
   const measures = Array.from({ length: pattern.measures }, (_, i) => i)
-  const stepIndices = Array.from({ length: steps }, (_, i) => i)
 
   return (
     // The paint handlers sit on the same element that takes pointer capture:
@@ -258,66 +255,7 @@ export function Grid() {
           </div>
         ))}
 
-        {pattern.tracks.map((track, trackIndex) => {
-          const voice = getVoice(track.voiceId)
-          return [
-            <div
-              key={`${track.voiceId}-label`}
-              className={`row__label${track.muted ? ' row__label--muted' : ''}`}
-              style={{ ['--track-color' as string]: voice.color }}
-            >
-              <span className="row__name">{voice.name}</span>
-              <span className="row__controls">
-                <button
-                  type="button"
-                  className="row__mute"
-                  onClick={() => toggleMute(trackIndex)}
-                  aria-pressed={track.muted}
-                  aria-label={`${track.muted ? 'Unmute' : 'Mute'} ${voice.name}`}
-                >
-                  M
-                </button>
-                <input
-                  type="range"
-                  className="row__level"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={track.level}
-                  onChange={(e) => setTrackLevel(trackIndex, Number(e.target.value))}
-                  aria-label={`${voice.name} volume`}
-                />
-              </span>
-            </div>,
-            ...stepIndices.map((stepIndex) => {
-              const velocity = track.steps[stepIndex] ?? 0
-              const classes = [
-                'cell',
-                velocity > 0 ? 'cell--on' : '',
-                stepIndex % STEPS_PER_BEAT === 0 ? 'cell--beat' : '',
-                stepIndex % STEPS_PER_MEASURE === 0 ? 'cell--bar' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')
-
-              return (
-                <button
-                  key={`${track.voiceId}-${stepIndex}`}
-                  type="button"
-                  className={classes}
-                  data-track={trackIndex}
-                  data-step={stepIndex}
-                  style={{
-                    ['--track-color' as string]: voice.color,
-                    ['--velocity' as string]: velocity,
-                  }}
-                  aria-label={`${voice.name} step ${stepIndex + 1}`}
-                  aria-pressed={velocity > 0}
-                />
-              )
-            }),
-          ]
-        })}
+        <DrumRows steps={steps} />
 
         <MelodyRows steps={steps} preview={preview} />
       </div>

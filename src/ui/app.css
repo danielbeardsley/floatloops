@@ -510,7 +510,7 @@
 
 /* --- piano roll ---------------------------------------------------------- */
 
-.melody-head {
+.section-head {
   grid-column: 1 / -1;
   margin-top: 6px;
   padding-top: 8px;
@@ -519,7 +519,7 @@
 
 /* The row spans the full scrollable width, so its contents are pinned rather
    than the row itself. */
-.melody-head__inner {
+.section-head__inner {
   position: sticky;
   left: 0;
   z-index: 2;
@@ -534,7 +534,7 @@
   background: var(--bg);
 }
 
-.melody-toggle {
+.section-toggle {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -546,18 +546,18 @@
   white-space: nowrap;
 }
 
-.melody-toggle__caret {
+.section-toggle__caret {
   font-size: 11px;
 }
 
-.melody-toggle__count {
+.section-toggle__count {
   padding: 1px 7px;
   border-radius: 999px;
   background: var(--panel-raised);
   font-size: 12px;
 }
 
-.melody-head__controls {
+.section-head__controls {
   display: flex;
   align-items: center;
   gap: 8px;

@@ -29,27 +29,27 @@ export function MelodyRows({
 
   return (
     <>
-      <div className="melody-head">
-        <div className="melody-head__inner">
+      <div className="section-head">
+        <div className="section-head__inner">
           <button
             type="button"
-            className="melody-toggle"
+            className="section-toggle"
             onClick={() => setMelodyOpen(!open)}
             aria-expanded={open}
           >
-            <span className="melody-toggle__caret" aria-hidden="true">
+            <span className="section-toggle__caret" aria-hidden="true">
               {open ? '▾' : '▸'}
             </span>
             Melody
             {!open && melody.notes.length > 0 ? (
-              <span className="melody-toggle__count">{melody.notes.length}</span>
+              <span className="section-toggle__count">{melody.notes.length}</span>
             ) : null}
           </button>
 
           {/* Shown whether or not the roll is expanded: the melody keeps
               playing when the section is collapsed, so its volume has to stay
               reachable, exactly like every drum track's does. */}
-          <span className="melody-head__controls">
+          <span className="section-head__controls">
             <button
               type="button"
               className="row__mute"

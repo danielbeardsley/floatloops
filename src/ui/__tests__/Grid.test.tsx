@@ -5,7 +5,8 @@ import { readTarget } from '../useStepPainter'
 import { usePatternStore } from '../../state/patternStore'
 import { resetTransport } from '../../state/transport'
 import { resetEngine, setContextFactory } from '../../audio/context'
-import { MAX_MEASURES, createEmptyPattern, isStepOn } from '../../state/schema'
+import { MAX_MEASURES, createEmptyPattern, demoPattern, isStepOn } from '../../state/schema'
+import { loadPreferences } from '../../state/preferences'
 import { STEPS_PER_MEASURE } from '../../audio/timing'
 import { KIT } from '../../audio/kit'
 import { useSettingsStore } from '../../state/settingsStore'
@@ -35,7 +36,7 @@ beforeEach(() => {
   mock = new MockAudioContext()
   setContextFactory(() => asAudioContext(mock))
   usePatternStore.setState({ pattern: createEmptyPattern('Test'), isPlaying: false })
-  useSettingsStore.setState({ followPlayhead: true, melodyOpen: false })
+  useSettingsStore.setState({ followPlayhead: true, melodyOpen: false, drumsOpen: true })
 })
 
 afterEach(() => {
@@ -333,5 +334,66 @@ describe('readTarget', () => {
     render(<Grid />)
     expect(readTarget(null)).toBeNull()
     expect(readTarget(screen.getByTestId('grid'))).toBeNull()
+  })
+})
+
+/** Folded away by the same header the piano roll uses. */
+describe('the drums section', () => {
+  const toggle = () => screen.getByRole('button', { name: /^drums/i })
+
+  it('is open to begin with, being the main event', () => {
+    render(<Grid />)
+    expect(toggle()).toHaveAttribute('aria-expanded', 'true')
+    expect(document.querySelectorAll('[data-track]')).toHaveLength(
+      KIT.length * STEPS_PER_MEASURE,
+    )
+  })
+
+  it('folds the drum rows away', () => {
+    render(<Grid />)
+    fireEvent.click(toggle())
+
+    expect(document.querySelectorAll('[data-track]')).toHaveLength(0)
+    expect(toggle()).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('leaves the ruler and the melody where they are', () => {
+    useSettingsStore.setState({ melodyOpen: true })
+    render(<Grid />)
+    fireEvent.click(toggle())
+
+    expect(screen.getByRole('button', { name: 'Go to measure 1' })).toBeInTheDocument()
+    expect(document.querySelectorAll('[data-pitch]').length).toBeGreaterThan(0)
+  })
+
+  // Collapsing is only ever visual, so a silent gap where nine rows were would
+  // be misleading about what is playing.
+  it('says how many drums are in use while it is collapsed', () => {
+    usePatternStore.setState({ pattern: demoPattern() })
+    render(<Grid />)
+    fireEvent.click(toggle())
+
+    // The demo beat uses kick, snare and both hats.
+    expect(toggle()).toHaveTextContent('4')
+  })
+
+  it('counts nothing for an empty beat', () => {
+    render(<Grid />)
+    fireEvent.click(toggle())
+    expect(toggle()).toHaveTextContent(/^\s*▸\s*Drums\s*$/)
+  })
+
+  it('remembers the choice for next time', () => {
+    render(<Grid />)
+    fireEvent.click(toggle())
+    expect(useSettingsStore.getState().drumsOpen).toBe(false)
+    expect(loadPreferences().drumsOpen).toBe(false)
+  })
+
+  it('does not disturb the other preferences', () => {
+    render(<Grid />)
+    fireEvent.click(toggle())
+    expect(loadPreferences().followPlayhead).toBe(true)
+    expect(loadPreferences().melodyOpen).toBe(false)
   })
 })

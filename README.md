@@ -24,6 +24,7 @@ way to get standalone mode.
 | Installable PWA | Fastest path to something playable, no app store. |
 | Tablet-first, landscape | ~60px grid cells with one measure visible. |
 | 9 sounds x 16 steps per measure | Seven drums then two synth voices; scroll sideways, `+` appends a measure. |
+| Sections fold rather than scroll | Nine drums plus eight pitches will not fit a tablet, and folding beats hunting. |
 | Separate library screen, not a side panel | Matches how the app is meant to be navigated. |
 | A song names its beats rather than copying them | One source of truth: fixing a beat fixes every song using it. |
 | React over Preact | Preact's bundle-size win is moot for a precached offline app. |
@@ -159,6 +160,15 @@ from either end, slid along and tapped away exactly like a note. The one
 difference is `lockLane` -- a clip cannot change rows, because a row *is* which
 beat plays, so dragging one upward would silently swap the beat rather than
 move the block.
+
+## The two halves
+
+Drums and melody are each a section of one grid, and each folds away behind the
+same header. Collapsing is only ever visual -- both go on playing -- so a
+folded header says how much is hidden rather than leaving a silent gap: how
+many drums are in use, how many notes there are. The drums open by default and
+the melody does not, since the melody is what you fold *out*, and both choices
+are remembered per device.
 
 ## The melody
 

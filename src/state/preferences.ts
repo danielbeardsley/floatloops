@@ -15,11 +15,15 @@ export type Preferences = {
   /** Whether the piano roll is expanded. Closed by default: the drums are the
    *  main event, and twelve tracks plus eight pitches is a lot of grid. */
   melodyOpen: boolean
+  /** Whether the drum rows are expanded. Open by default, being the main event
+   *  -- it is folded away to get at the melody, not the other way round. */
+  drumsOpen: boolean
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
   followPlayhead: true,
   melodyOpen: false,
+  drumsOpen: true,
 }
 
 export function loadPreferences(): Preferences {
@@ -37,6 +41,7 @@ export function loadPreferences(): Preferences {
     return {
       followPlayhead: read('followPlayhead'),
       melodyOpen: read('melodyOpen'),
+      drumsOpen: read('drumsOpen'),
     }
   } catch {
     return DEFAULT_PREFERENCES
