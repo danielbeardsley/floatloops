@@ -104,8 +104,14 @@
   padding: var(--gap);
   overflow-x: auto;
   overflow-y: auto;
-  /* The ruler and empty space pan the grid; cells paint instead. */
-  touch-action: pan-x;
+  /*
+   * Both axes, because this value is a ceiling on every descendant: with
+   * pan-x here, nothing inside the grid could scroll vertically however it was
+   * marked -- not the row labels, not the ruler, not the empty space. The cells
+   * still opt out entirely (see .cell) so a one-finger drag paints; everything
+   * around them pans.
+   */
+  touch-action: pan-x pan-y;
   overscroll-behavior-x: contain;
 }
 
@@ -152,6 +158,26 @@
   background: var(--bg);
 }
 
+/*
+ * The label column is the grid's vertical grip, as the ruler is its horizontal
+ * one -- both are sticky, so neither can scroll out of reach. The dotted seam
+ * down its edge is the only thing saying so; repeated on every row it reads as
+ * one continuous rule.
+ */
+.row__label::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 2px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    var(--line) 0 3px,
+    transparent 3px 7px
+  );
+}
+
 .ruler__measure {
   grid-column: span 16;
   /* Twelve tracks no longer fit on a tablet, so the grid scrolls vertically
@@ -167,7 +193,7 @@
   border-radius: 8px;
   background: var(--panel);
   border: 1px solid var(--line);
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;
 }
 
 .ruler__jump {
@@ -243,6 +269,10 @@
   width: 100%;
   min-width: 0;
   accent-color: var(--track-color, var(--accent));
+  /* Sideways belongs to the slider, up and down to the grid. Without this the
+     slider swallows every drag that starts on it, and it spans most of the
+     one column that is supposed to scroll. */
+  touch-action: pan-y;
 }
 
 /* --- cells --------------------------------------------------------------- */
@@ -254,7 +284,8 @@
   background: var(--panel);
   border: 1px solid var(--line);
   /* Painting needs every pointer move; the browser must not steal them to
-     scroll. The ruler is what pans the grid instead. */
+     scroll. The chrome around the grid pans it instead, and two fingers pan
+     from anywhere -- including from here. */
   touch-action: none;
   transition:
     background-color 50ms linear,

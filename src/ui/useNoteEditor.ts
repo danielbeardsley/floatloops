@@ -120,6 +120,10 @@ export function useNoteEditor({
 
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
+      // One gesture at a time, for the same reason the painter takes one
+      // stroke: a second finger would silently replace the note being drawn.
+      if (gesture.current) return
+
       const target = readNoteTarget(event.target as Element, lane)
       if (!target) return
 
@@ -216,7 +220,17 @@ export function useNoteEditor({
     [container, onDraw, onEdit, onRemove, publish],
   )
 
+  /**
+   * Drops the gesture without committing it -- unlike a pointer cancel, which
+   * commits, because a finger lifted off the screen still meant the note. A
+   * second finger arriving means a scroll, and never meant a note at all.
+   */
+  const abort = useCallback(() => {
+    if (gesture.current) publish(null)
+  }, [publish])
+
   return {
+    abort,
     onPointerDown,
     onPointerMove,
     onPointerUp: endGesture,

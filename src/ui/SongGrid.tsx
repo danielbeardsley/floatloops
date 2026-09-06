@@ -19,6 +19,7 @@ import { bridgesGap, clipFill, rowColor, type ClipFill } from './songCells'
 import { useNoteEditor, type NoteTarget } from './useNoteEditor'
 import type { NotePreview } from './noteEdits'
 import { usePlayhead } from './usePlayhead'
+import { useTwoFingerPan } from './useTwoFingerPan'
 import { BeatPicker } from './BeatPicker'
 
 /** Width of the sticky row column. Keep in step with --label-w in app.css. */
@@ -118,11 +119,35 @@ export function SongGrid() {
     },
   })
 
+  const pan = useTwoFingerPan({
+    container: scroller,
+    onStart: () => {
+      // Reaching for a scroll must not leave a block behind.
+      editor.abort()
+      dragging.current = true
+    },
+    onEnd: () => {
+      dragging.current = false
+    },
+  })
+
   const gestures = {
-    onPointerDown: (e: ReactPointerEvent<HTMLElement>) => editor.onPointerDown(e),
-    onPointerMove: (e: ReactPointerEvent<HTMLElement>) => editor.onPointerMove(e),
-    onPointerUp: (e: ReactPointerEvent<HTMLElement>) => editor.onPointerUp(e),
-    onPointerCancel: (e: ReactPointerEvent<HTMLElement>) => editor.onPointerCancel(e),
+    onPointerDown: (e: ReactPointerEvent<HTMLElement>) => {
+      editor.onPointerDown(e)
+      pan.onPointerDown(e)
+    },
+    onPointerMove: (e: ReactPointerEvent<HTMLElement>) => {
+      editor.onPointerMove(e)
+      pan.onPointerMove(e)
+    },
+    onPointerUp: (e: ReactPointerEvent<HTMLElement>) => {
+      editor.onPointerUp(e)
+      pan.onPointerUp(e)
+    },
+    onPointerCancel: (e: ReactPointerEvent<HTMLElement>) => {
+      editor.onPointerCancel(e)
+      pan.onPointerCancel(e)
+    },
   }
 
   const scrollToBar = useCallback((bar: number, onlyIfHidden: boolean) => {

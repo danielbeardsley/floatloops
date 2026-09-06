@@ -188,6 +188,25 @@ carries a `×` that removes it, which closes the gap rather than truncating from
 the end, so dropping bar 2 of 4 leaves bars 1, 3 and 4 intact. It only asks for
 confirmation when the measure has something in it.
 
+Scrolling has two ways in, because the cells cannot be one of them:
+
+| | |
+| --- | --- |
+| **The chrome** | The ruler pans sideways and the row-label column pans up and down. Both are sticky, so neither can scroll out of reach, and the dotted seam down the label column is what says so. |
+| **Two fingers** | Pans both ways from anywhere, cells included. It engages only when the first finger came down on a cell; everywhere else the browser is already panning, and a second panner on top would move the grid twice as fast. |
+
+`touch-action` on the grid is `pan-x pan-y`, and that value is a *ceiling on
+every descendant*: while it read `pan-x`, nothing inside could scroll
+vertically however it was marked, which made a grid taller than the screen
+unreachable below the fold. The cells still opt out with `none`, so a
+one-finger drag paints.
+
+Two fingers abandon whatever one finger had begun -- the stroke is put back
+cell by cell, and a half-drawn note is dropped rather than committed. Reaching
+for a scroll should not leave a mark. Each gesture layer also takes one
+pointer at a time now; a second finger used to start its own stroke, taking the
+mode and the undo record with it.
+
 In the piano roll, what a press means depends on the cell it lands on:
 
 | Cell | Gesture |
@@ -250,6 +269,10 @@ corner turns that off; the choice is remembered per device in localStorage.
 - **Never put the playhead in React state.** At four measures that is 512 cells
   re-rendering eight times a second. `usePlayhead` swaps a class on just the
   cells that changed, from an animation frame loop.
+- **jsdom has no `PointerEvent`.** Testing Library falls back to a plain
+  `Event`, which silently drops `pointerId` and the coordinates -- so a test
+  can fire two fingers and the code under test sees one. `src/test/setup.ts`
+  supplies a minimal stand-in.
 - **Pointer capture retargets events.** The paint handlers must live on the same
   element that calls `setPointerCapture`, or the drag stops firing the moment it
   starts. jsdom has no pointer capture, so tests will not catch this.

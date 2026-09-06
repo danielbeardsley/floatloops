@@ -19,6 +19,7 @@ import { useSettingsStore } from '../state/settingsStore'
 import { planFollow } from './followPlayhead'
 import { usePlayhead } from './usePlayhead'
 import { useStepPainter, type StepTarget } from './useStepPainter'
+import { useTwoFingerPan } from './useTwoFingerPan'
 
 /** Width of the sticky track column. Keep in step with --label-w in app.css. */
 const LABEL_WIDTH = 150
@@ -113,14 +114,34 @@ export function Grid() {
     },
   })
 
+  // Undoing a stroke must not sound the drums it restores, which is the whole
+  // reason this is not just onPaint.
+  const onRevert = useCallback((target: StepTarget, value: number) => {
+    usePatternStore.getState().setStep(target.trackIndex, target.stepIndex, value)
+  }, [])
+
   const painter = useStepPainter({
     container: scroller,
     isOn,
     onPaint,
+    onRevert,
     onPaintStart: () => {
       painting.current = true
     },
     onPaintEnd: () => {
+      painting.current = false
+    },
+  })
+
+  const pan = useTwoFingerPan({
+    container: scroller,
+    onStart: () => {
+      // Reaching for a scroll must not leave a step or a note behind.
+      painter.abort()
+      editor.abort()
+      painting.current = true
+    },
+    onEnd: () => {
       painting.current = false
     },
   })
@@ -130,22 +151,28 @@ export function Grid() {
    * events that did not start on a cell it owns, so they can safely both see
    * every event -- and pointer capture demands a single element anyway.
    */
+  // The pan goes last on the way down, so that the second finger's own paint
+  // is already in the stroke it then undoes.
   const gestures = {
     onPointerDown: (event: ReactPointerEvent<HTMLElement>) => {
       painter.onPointerDown(event)
       editor.onPointerDown(event)
+      pan.onPointerDown(event)
     },
     onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
       painter.onPointerMove(event)
       editor.onPointerMove(event)
+      pan.onPointerMove(event)
     },
     onPointerUp: (event: ReactPointerEvent<HTMLElement>) => {
       painter.onPointerUp(event)
       editor.onPointerUp(event)
+      pan.onPointerUp(event)
     },
     onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => {
       painter.onPointerCancel(event)
       editor.onPointerCancel(event)
+      pan.onPointerCancel(event)
     },
   }
 
