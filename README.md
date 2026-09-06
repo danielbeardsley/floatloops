@@ -57,8 +57,11 @@ src/
 Two rules that the rest of the app depends on:
 
 1. **The audio engine is a module-level singleton, outside React.** Navigating
-   between the sequencer and the library must never tear down the
-   `AudioContext`.
+   between screens must never tear down the `AudioContext` -- that would cost
+   another unlock gesture. The *transport* is a different matter: each screen
+   stops what it started when it goes away, because a beat playing on from a
+   screen you have left has no playhead and no stop button. Engine survives,
+   playback does not.
 2. **Visuals never drive audio.** Notes are scheduled ahead of time against
    `audioContext.currentTime`; the playhead is drawn separately from a
    `requestAnimationFrame` loop that only reads that clock.

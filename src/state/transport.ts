@@ -9,7 +9,8 @@ import type { Pattern } from './schema'
 
 /**
  * The one Sequencer, created lazily and kept outside React alongside the audio
- * engine, so navigating between screens cannot interrupt playback.
+ * engine, so that navigating never has to rebuild either of them. Playback
+ * itself does not survive a screen change -- see useStopOnLeave.
  */
 let sequencer: Sequencer | null = null
 

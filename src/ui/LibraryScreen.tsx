@@ -8,6 +8,7 @@ import { createEmptyPattern } from '../state/schema'
 import { createEmptySong } from '../state/song'
 import { PatternCard } from './PatternCard'
 import { SongCard } from './SongCard'
+import { useStopOnLeave } from './useStopOnLeave'
 
 export function LibraryScreen() {
   const navigate = useNavigate()
@@ -18,6 +19,10 @@ export function LibraryScreen() {
   const refresh = useLibraryStore((s) => s.refresh)
   const setPattern = usePatternStore((s) => s.setPattern)
   const setSong = useSongStore((s) => s.setSong)
+
+  // A preview left running after you leave is the same sound with no visible
+  // source that leaving the beat or song screen used to produce.
+  useStopOnLeave()
 
   useEffect(() => {
     void refresh()

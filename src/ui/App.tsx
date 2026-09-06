@@ -6,8 +6,12 @@ import './app.css'
 
 /**
  * Hash routing so the back button behaves once the app is installed to the
- * home screen. The audio engine and sequencer live outside the router, so
- * moving between screens never interrupts playback.
+ * home screen.
+ *
+ * The audio engine lives outside the router and survives navigation; the
+ * transport does not. Each screen stops what it started when it goes away,
+ * because a beat playing on from a screen you have left has no playhead and
+ * no stop button.
  */
 export function App() {
   return (
