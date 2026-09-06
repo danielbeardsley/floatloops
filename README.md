@@ -138,6 +138,12 @@ would write, not by timestamps: an edit in the same millisecond as a save would
 read as no edit, and a note dragged away and back rebuilds the note list
 without changing the music.
 
+Both transports carry an **Unsaved** mark once the editor holds more than the
+library does -- on the beat side it steps aside when the way-back bar is
+already saying so, and saying the more useful half of it. A beat the library
+has never heard of counts, which is what makes the working beat's unsavedness
+visible at all.
+
 The song itself is marked **Unsaved** in its transport once it differs from
 the library's copy, and leaving for the library asks first. A song is not
 merely out of date while it is unsaved, the way a beat is -- the library is

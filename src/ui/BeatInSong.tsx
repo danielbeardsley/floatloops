@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useLibraryStore } from '../state/libraryStore'
 import { usePatternStore } from '../state/patternStore'
 import { useSongStore } from '../state/songStore'
-import { confirmLeavingBeatForSong, isUnsaved } from './unsaved'
+import { confirmLeavingBeatForSong, isUnsaved, patternIsInSong } from './unsaved'
 
 /**
  * The way back, shown while the beat in the sequencer is one the open song
@@ -23,8 +23,7 @@ export function BeatInSong() {
   const navigate = useNavigate()
   const pattern = usePatternStore((s) => s.pattern)
   const setPattern = usePatternStore((s) => s.setPattern)
-  const songName = useSongStore((s) => s.song.name)
-  const rows = useSongStore((s) => s.song.rows)
+  const song = useSongStore((s) => s.song)
   const saved = useLibraryStore((s) => s.patternsById.get(pattern.id))
   const saveToLibrary = useLibraryStore((s) => s.save)
 
@@ -52,12 +51,12 @@ export function BeatInSong() {
   // Above the early return, because a hook cannot be conditional.
   const unsaved = useMemo(() => isUnsaved(pattern, saved), [pattern, saved])
 
-  if (!rows.some((row) => row.patternId === pattern.id)) return null
+  if (!patternIsInSong(pattern, song)) return null
 
   return (
     <div className="in-song">
       <span className="in-song__what">
-        In the song <strong>{songName}</strong>
+        In the song <strong>{song.name}</strong>
       </span>
 
       {unsaved ? (

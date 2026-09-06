@@ -98,10 +98,14 @@ export function confirmDiscardingSong(what: string): boolean {
   return window.confirm(`${what} will discard the unsaved changes to "${name}". Carry on?`)
 }
 
-/** Whether the song being arranged has a row playing the beat in the sequencer. */
+/** Whether a song has a row playing a given beat. */
+export function patternIsInSong(pattern: Pattern, song: Song): boolean {
+  return song.rows.some((row) => row.patternId === pattern.id)
+}
+
+/** The same question about whatever is on screen, for the imperative callers. */
 export function beatIsInSong(): boolean {
-  const { pattern } = usePatternStore.getState()
-  return useSongStore.getState().song.rows.some((row) => row.patternId === pattern.id)
+  return patternIsInSong(usePatternStore.getState().pattern, useSongStore.getState().song)
 }
 
 /**

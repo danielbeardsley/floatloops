@@ -4,7 +4,7 @@ import { useSongStore } from '../state/songStore'
 import { useLibraryStore } from '../state/libraryStore'
 import { toggleSongPlay, togglePlay } from '../state/transport'
 import { MAX_BPM, MIN_BPM } from '../audio/timing'
-import { songIsUnsaved } from './unsaved'
+import { isUnsaved, patternIsInSong, songIsUnsaved } from './unsaved'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
 
@@ -108,12 +108,20 @@ function TransportBar({
 
 export function Transport() {
   const isPlaying = usePatternStore((s) => s.isPlaying)
-  const bpm = usePatternStore((s) => s.pattern.bpm)
-  const name = usePatternStore((s) => s.pattern.name)
+  const pattern = usePatternStore((s) => s.pattern)
   const setBpm = usePatternStore((s) => s.setBpm)
   const rename = usePatternStore((s) => s.rename)
   const setPattern = usePatternStore((s) => s.setPattern)
   const saveToLibrary = useLibraryStore((s) => s.save)
+  const saved = useLibraryStore((s) => s.patternsById.get(pattern.id))
+  const song = useSongStore((s) => s.song)
+
+  // Suppressed while the beat belongs to the song on screen, because the
+  // way-back bar is already saying so a few pixels above -- and saying the
+  // more useful half of it, which is what the song plays meanwhile.
+  const unsaved =
+    useMemo(() => isUnsaved(pattern, saved), [pattern, saved]) &&
+    !patternIsInSong(pattern, song)
 
   const onSave = useCallback(async () => {
     // Keep the saved copy, so pressing Save again updates in place rather
@@ -124,14 +132,16 @@ export function Transport() {
   return (
     <TransportBar
       isPlaying={isPlaying}
-      name={name}
-      bpm={bpm}
+      name={pattern.name}
+      bpm={pattern.bpm}
       nameLabel="Beat name"
       onToggle={() => void togglePlay()}
       onRename={rename}
       onBpm={setBpm}
       onSave={onSave}
-    />
+    >
+      {unsaved ? <span className="unsaved-mark">Unsaved</span> : null}
+    </TransportBar>
   )
 }
 

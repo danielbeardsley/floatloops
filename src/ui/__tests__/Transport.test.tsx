@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { Transport } from '../Transport'
 import { usePatternStore } from '../../state/patternStore'
+import { useLibraryStore } from '../../state/libraryStore'
+import { useSongStore } from '../../state/songStore'
+import { addRow, createEmptySong } from '../../state/song'
+import { toggleStep, type Pattern } from '../../state/schema'
 import { resetTransport } from '../../state/transport'
 import { resetEngine, setContextFactory } from '../../audio/context'
 import { demoPattern } from '../../state/schema'
@@ -22,6 +26,8 @@ beforeEach(() => {
   mock = new MockAudioContext()
   setContextFactory(() => asAudioContext(mock))
   usePatternStore.setState({ pattern: demoPattern(), isPlaying: false })
+  useLibraryStore.setState({ patterns: [], patternsById: new Map(), songs: [] })
+  useSongStore.setState({ song: createEmptySong(), preview: null, isPlaying: false })
 })
 
 afterEach(() => {
@@ -74,3 +80,45 @@ describe('Transport', () => {
   })
 })
 
+
+/** The beat's half of the unsaved marking the song transport already carries. */
+describe('the unsaved mark', () => {
+  const beat: Pattern = { ...demoPattern(), id: 'boom' }
+
+  function library(saved: Pattern[]) {
+    useLibraryStore.setState({
+      patterns: saved,
+      patternsById: new Map(saved.map((p) => [p.id, p])),
+      songs: [],
+    })
+  }
+
+  it('marks a beat the library has never heard of', () => {
+    usePatternStore.setState({ pattern: beat })
+    render(<Transport />)
+    expect(screen.getByText('Unsaved')).toBeInTheDocument()
+  })
+
+  it('says nothing once the library has the same beat', () => {
+    library([beat])
+    usePatternStore.setState({ pattern: beat })
+    render(<Transport />)
+    expect(screen.queryByText('Unsaved')).not.toBeInTheDocument()
+  })
+
+  it('marks it again as soon as it is edited', () => {
+    library([beat])
+    usePatternStore.setState({ pattern: toggleStep(beat, 2, 5) })
+    render(<Transport />)
+    expect(screen.getByText('Unsaved')).toBeInTheDocument()
+  })
+
+  // The way-back bar sits directly above and says the more useful half of it.
+  it('leaves it to the way-back bar when the beat is in the open song', () => {
+    library([beat])
+    usePatternStore.setState({ pattern: toggleStep(beat, 2, 5) })
+    useSongStore.setState({ song: addRow(createEmptySong(), beat.id) })
+    render(<Transport />)
+    expect(screen.queryByText('Unsaved')).not.toBeInTheDocument()
+  })
+})
