@@ -202,6 +202,13 @@ corner turns that off; the choice is remembered per device in localStorage.
 
 - **iOS silent switch mutes Web Audio.** Handled by setting
   `navigator.audioSession.type = 'playback'` (Safari 16.4+).
+- **A blocked IndexedDB upgrade waits forever, silently.** A version bump
+  cannot run while another tab still holds the old version, and the open
+  request simply never settles -- the library screen spins with nothing to
+  say. `storage.ts` handles both sides: a connection that is *blocking* an
+  upgrade closes itself, and one that is *blocked* gives up with a message
+  naming the cause. Hot reload triggers this too, since the previous module
+  instance's connection outlives it.
 - **Safari evicts IndexedDB after 7 days of non-use** for sites that are not
   installed to the home screen. Saved patterns need the install, plus an export
   escape hatch.

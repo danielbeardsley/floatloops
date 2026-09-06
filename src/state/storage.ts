@@ -18,18 +18,57 @@ const SONG_STORE = 'songs'
 
 let dbPromise: Promise<IDBPDatabase> | null = null
 
-function db(): Promise<IDBPDatabase> {
-  if (!dbPromise) {
-    // The upgrade is written as a set of conditional creates rather than a
-    // switch on oldVersion, so a database at any past version lands in the
-    // same shape.
-    dbPromise = openDB(DB_NAME, DB_VERSION, {
+/**
+ * An upgrade cannot run while another connection is still on the old version,
+ * and IndexedDB's answer to that is to wait -- forever, silently. That is the
+ * worst possible failure here: the library screen would spin with nothing to
+ * show and nothing to say.
+ *
+ * So both sides of the standoff are handled. A connection that is *blocking*
+ * an upgrade closes itself and gets out of the way; a connection that is
+ * *blocked* by one that will not gives up with something the user can act on.
+ */
+function open(): Promise<IDBPDatabase> {
+  let gaveUp = false
+
+  return new Promise<IDBPDatabase>((resolve, reject) => {
+    const opening = openDB(DB_NAME, DB_VERSION, {
+      // Written as a set of conditional creates rather than a switch on
+      // oldVersion, so a database at any past version lands in the same shape.
       upgrade(database) {
         for (const name of [STORE, SONG_STORE]) {
           if (database.objectStoreNames.contains(name)) continue
           database.createObjectStore(name, { keyPath: 'id' }).createIndex('updatedAt', 'updatedAt')
         }
       },
+      blocked() {
+        gaveUp = true
+        reject(new Error('FloatLoops is open in another tab. Close it, then reload this one.'))
+      },
+      blocking() {
+        // Something newer wants in. Drop this handle so it can proceed; the
+        // next read opens a fresh one.
+        void closeStorage()
+      },
+    })
+
+    void opening.then((database) => {
+      // The upgrade can still go through later, once whatever was in the way
+      // lets go. By then nobody holds this handle, so it is closed rather than
+      // left open to block the next attempt in turn.
+      if (gaveUp) database.close()
+      else resolve(database)
+    }, reject)
+  })
+}
+
+function db(): Promise<IDBPDatabase> {
+  if (!dbPromise) {
+    // A failed open is not remembered, so closing the offending tab and trying
+    // again is enough to recover -- no reload required.
+    dbPromise = open().catch((error: unknown) => {
+      dbPromise = null
+      throw error
     })
   }
   return dbPromise
