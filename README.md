@@ -124,6 +124,20 @@ row fader *is* the melody's level, which is also the only way to make a quietly
 written melody louder. Muting is not a level: a melody switched off inside its
 beat stays off however loud its row.
 
+Editing a beat from a song row lands you in the sequencer, where a bar across
+the top says which song you came from and offers **Save & back to song** as one
+button. It is shown when the open song has a row playing the open beat --
+derived rather than remembered from the trip in, so it is true however you got
+there and cannot go stale when the row is removed.
+
+Since a row names a *library* beat, forgetting the save does not lose the work
+-- the sequencer keeps it -- but the song goes on playing the last version that
+was saved. That is what the unsaved warning says, on the way-back button and on
+the header's Song link alike. Saved-ness is decided by comparing what a save
+would write, not by timestamps: an edit in the same millisecond as a save would
+read as no edit, and a note dragged away and back rebuilds the note list
+without changing the music.
+
 The grid reuses the piano roll's gesture layer whole: a clip is drawn, resized
 from either end, slid along and tapped away exactly like a note. The one
 difference is `lockLane` -- a clip cannot change rows, because a row *is* which

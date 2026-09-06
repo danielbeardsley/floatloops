@@ -866,3 +866,53 @@
 .library__section .library__message {
   margin-bottom: 0;
 }
+
+/* --- a beat that belongs to a song --------------------------------------- */
+
+.in-song {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+}
+
+.in-song__what {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.in-song__what strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* The point of the warning is not that the work is about to be lost -- it is
+   not -- but that the song is still playing the version on disk. */
+.in-song__unsaved {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.in-song__failed {
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.in-song__actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.in-song__actions .button {
+  padding: 10px 18px;
+  font-size: 15px;
+  white-space: nowrap;
+}
