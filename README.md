@@ -219,14 +219,23 @@ mode and the undo record with it.
 
 In the piano roll, what a press means depends on the cell it lands on:
 
-| Cell | Gesture |
+| Where the press lands | Gesture |
 | --- | --- |
 | empty | drag right to draw a note of that length |
-| a note's first cell | drag the left edge; the right edge stays put |
-| a note's last cell | drag the right edge |
-| a note's middle | move it -- length fixed, and the row under the finger sets the pitch |
-| a one-step note | it is both edges at once, so it grows whichever way it is pulled |
+| a handle, at either end of a note | resize from that end; the other end stays put |
+| anywhere else on a note | move it -- length fixed, and the row under the finger sets the pitch |
 | a note, tapped without dragging | delete |
+
+Resizing lives entirely in two **handles**, drawn at the outer ends of a note's
+run. That is what makes short notes draggable: a one-step note is its own start
+and its own end, and a two-step note is both with nothing in between, so under
+the older rule of "the middle moves" neither had a middle to grab and neither
+could be moved at all. A handle only counts on the end it belongs to -- the
+left handle of a note's last cell is not a thing, so a press there moves.
+
+The handles are real elements rather than a measured strip of the cell, so what
+can be grabbed is exactly what is drawn and the two cannot drift apart. Song
+clips use the same ones.
 
 Drawing a new note stays on the row it started on, because a stray row during a
 draw is easy to do by accident. Moving deliberately does not, because changing

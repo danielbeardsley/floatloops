@@ -18,6 +18,7 @@ import { STEPS_PER_MEASURE } from '../audio/timing'
 import { bridgesGap, clipFill, rowColor, type ClipFill } from './songCells'
 import { useNoteEditor, type NoteTarget } from './useNoteEditor'
 import type { NotePreview } from './noteEdits'
+import { NoteGrips } from './NoteGrips'
 import { usePlayhead } from './usePlayhead'
 import { useTwoFingerPan } from './useTwoFingerPan'
 import { BeatPicker } from './BeatPicker'
@@ -353,6 +354,7 @@ export function SongGrid() {
                         &times;{fill.passes}
                       </span>
                     ) : null}
+                    <NoteGrips role={fill && !fill.draft ? fill.role : null} />
                   </button>
                 )
               }),

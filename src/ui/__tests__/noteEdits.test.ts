@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyEdit, editModeFor, sameShape, type NoteShape } from '../noteEdits'
+import { applyEdit, editModeFor, hasGrip, sameShape, type NoteShape } from '../noteEdits'
 
 const TOTAL = 16
 
@@ -11,14 +11,47 @@ function drag(mode: Parameters<typeof applyEdit>[1], grabStep: number, step: num
 }
 
 describe('editModeFor', () => {
-  it('maps each part of a note to what grabbing it means', () => {
-    expect(editModeFor('start')).toBe('resize-start')
-    expect(editModeFor('end')).toBe('resize-end')
-    expect(editModeFor('middle')).toBe('move')
+  it('resizes from the handle at each end of the run', () => {
+    expect(editModeFor('start', 'start')).toBe('resize-start')
+    expect(editModeFor('end', 'end')).toBe('resize-end')
   })
 
-  it('treats a one-step note as both edges at once', () => {
-    expect(editModeFor('single')).toBe('resize-either')
+  it('moves the note from anywhere the handles do not cover', () => {
+    expect(editModeFor('start', 'body')).toBe('move')
+    expect(editModeFor('middle', 'body')).toBe('move')
+    expect(editModeFor('end', 'body')).toBe('move')
+  })
+
+  // This is the whole point: neither a one-step note nor a two-step one has a
+  // middle, so under the old rule neither could be moved anywhere.
+  it('gives a one-step note both handles and a middle', () => {
+    expect(editModeFor('single', 'start')).toBe('resize-start')
+    expect(editModeFor('single', 'end')).toBe('resize-end')
+    expect(editModeFor('single', 'body')).toBe('move')
+  })
+
+  // The left handle of a note's last cell is not a thing.
+  it('ignores a handle on the wrong end of the run', () => {
+    expect(editModeFor('end', 'start')).toBe('move')
+    expect(editModeFor('start', 'end')).toBe('move')
+    expect(editModeFor('middle', 'start')).toBe('move')
+    expect(editModeFor('middle', 'end')).toBe('move')
+  })
+})
+
+describe('which cells carry a handle', () => {
+  it('puts them only on the outer ends of a run', () => {
+    expect(hasGrip('start', 'start')).toBe(true)
+    expect(hasGrip('start', 'end')).toBe(false)
+    expect(hasGrip('end', 'end')).toBe(true)
+    expect(hasGrip('end', 'start')).toBe(false)
+    expect(hasGrip('middle', 'start')).toBe(false)
+    expect(hasGrip('middle', 'end')).toBe(false)
+  })
+
+  it('gives a one-step note both', () => {
+    expect(hasGrip('single', 'start')).toBe(true)
+    expect(hasGrip('single', 'end')).toBe(true)
   })
 })
 
@@ -105,23 +138,33 @@ describe('moving a note', () => {
   })
 })
 
-describe('a one-step note', () => {
+describe('a one-step note, now that its ends are handles', () => {
   const single: NoteShape = { pitch: 1, start: 8, length: 1 }
 
-  function pull(step: number) {
-    return applyEdit(single, 'resize-either', 8, { pitch: 1, step }, TOTAL)
-  }
-
-  it('grows to the right when pulled right', () => {
-    expect(pull(11)).toEqual({ pitch: 1, start: 8, length: 4 })
+  it('grows to the right from its end handle', () => {
+    expect(applyEdit(single, 'resize-end', 8, { pitch: 1, step: 11 }, TOTAL)).toEqual({
+      pitch: 1,
+      start: 8,
+      length: 4,
+    })
   })
 
-  it('grows to the left when pulled left', () => {
-    expect(pull(5)).toEqual({ pitch: 1, start: 5, length: 4 })
+  it('grows to the left from its start handle', () => {
+    expect(applyEdit(single, 'resize-start', 8, { pitch: 1, step: 5 }, TOTAL)).toEqual({
+      pitch: 1,
+      start: 5,
+      length: 4,
+    })
   })
 
-  it('is unchanged while the finger stays on it', () => {
-    expect(pull(8)).toEqual(single)
+  // What the handles are for: it used to be resizable from anywhere on it and
+  // movable from nowhere.
+  it('moves when it is dragged by its middle', () => {
+    expect(applyEdit(single, 'move', 8, { pitch: 1, step: 12 }, TOTAL)).toEqual({
+      pitch: 1,
+      start: 12,
+      length: 1,
+    })
   })
 })
 

@@ -609,40 +609,39 @@
   opacity: 0.55;
 }
 
-/* A grab bar on each end of a note, so it is visible that the edges drag. */
-.note--start::before,
-.note--end::before,
-.note--single::before {
-  content: '';
+/*
+ * The handles that resize a note, one at each end of its run.
+ *
+ * A real element rather than a pseudo-element, because this is what the
+ * gesture layer hit-tests: the strip that resizes is exactly the strip that is
+ * drawn. Everything they leave uncovered moves the note, which is what a
+ * one- or two-step note has instead of a middle.
+ */
+.note__grip {
   position: absolute;
-  top: 30%;
-  bottom: 30%;
-  width: 3px;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.note__grip::before {
+  content: '';
+  width: 4px;
+  height: 42%;
   border-radius: 2px;
   background: var(--bg);
-  opacity: 0.45;
+  opacity: 0.5;
 }
 
-.note--start::before,
-.note--single::before {
-  left: 5px;
+.note__grip--start {
+  left: 0;
 }
 
-.note--end::before {
-  right: 5px;
-}
-
-/* A one-step note is both edges at once, so it gets both marks. */
-.note--single::after {
-  content: '';
-  position: absolute;
-  top: 30%;
-  bottom: 30%;
-  right: 5px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--bg);
-  opacity: 0.45;
+.note__grip--end {
+  right: 0;
 }
 
 /* --- song grid ----------------------------------------------------------- */

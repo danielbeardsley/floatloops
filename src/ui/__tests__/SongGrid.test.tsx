@@ -45,6 +45,13 @@ function dragOver(cell: HTMLElement) {
   fireEvent.pointerMove(cell, { clientX: 1, clientY: 1, pointerId: 1 })
 }
 
+/** The handle at one end of a block; resizing lives entirely in these. */
+function grip(cell: HTMLElement, side: 'start' | 'end'): HTMLElement {
+  const handle = cell.querySelector<HTMLElement>(`[data-grip="${side}"]`)
+  if (!handle) throw new Error(`no ${side} handle on that cell`)
+  return handle
+}
+
 function clipsOf(rowIndex: number) {
   return useSongStore.getState().song.rows[rowIndex].clips
 }
@@ -163,7 +170,7 @@ describe('placing beats', () => {
     setSong(addClip(addRow(createEmptySong(), SHUFFLE.id), 0, { start: 0, length: 2 }))
     renderGrid()
 
-    fireEvent.pointerDown(cellFor(0, 1), { pointerId: 1 })
+    fireEvent.pointerDown(grip(cellFor(0, 1), 'end'), { pointerId: 1 })
     dragOver(cellFor(0, 0))
     fireEvent.pointerUp(cellFor(0, 0), { pointerId: 1 })
 
@@ -234,11 +241,35 @@ describe('placing beats', () => {
     setSong(addClip(useSongStore.getState().song, 0, { start: 0, length: 4 }))
     renderGrid()
 
-    fireEvent.pointerDown(cellFor(0, 3), { pointerId: 1 })
+    fireEvent.pointerDown(grip(cellFor(0, 3), 'end'), { pointerId: 1 })
     dragOver(cellFor(0, 1))
     fireEvent.pointerUp(cellFor(0, 1), { pointerId: 1 })
 
     expect(clipsOf(0)[0]).toMatchObject({ start: 0, length: 2 })
+  })
+
+  // A one-bar block has both handles and, between them, a middle -- which is
+  // the only way it can be moved at all.
+  it('moves a one-bar block dragged by its middle', () => {
+    setSong(addClip(useSongStore.getState().song, 0, { start: 1, length: 1 }))
+    renderGrid()
+
+    fireEvent.pointerDown(cellFor(0, 1), { pointerId: 1 })
+    dragOver(cellFor(0, 5))
+    fireEvent.pointerUp(cellFor(0, 5), { pointerId: 1 })
+
+    expect(clipsOf(0)[0]).toMatchObject({ start: 5, length: 1 })
+  })
+
+  it('resizes a one-bar block from its end handle instead', () => {
+    setSong(addClip(useSongStore.getState().song, 0, { start: 1, length: 1 }))
+    renderGrid()
+
+    fireEvent.pointerDown(grip(cellFor(0, 1), 'end'), { pointerId: 1 })
+    dragOver(cellFor(0, 4))
+    fireEvent.pointerUp(cellFor(0, 4), { pointerId: 1 })
+
+    expect(clipsOf(0)[0]).toMatchObject({ start: 1, length: 4 })
   })
 
   // A row *is* which beat plays, so a clip dragged upwards would silently

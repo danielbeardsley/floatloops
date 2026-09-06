@@ -32,6 +32,16 @@ function notes() {
   return usePatternStore.getState().pattern.melody.notes
 }
 
+/**
+ * The handle at one end of a note. Resizing lives entirely in these, so a
+ * press on the cell around them means move.
+ */
+function grip(cell: HTMLElement, side: 'start' | 'end'): HTMLElement {
+  const handle = cell.querySelector<HTMLElement>(`[data-grip="${side}"]`)
+  if (!handle) throw new Error(`no ${side} handle on that cell`)
+  return handle
+}
+
 /** Pointer capture retargets moves, so the cell under the finger is looked up. */
 function dragOver(cells: HTMLElement[]) {
   for (const cell of cells) {
@@ -163,31 +173,51 @@ describe('editing notes', () => {
     render(<Grid />)
   }
 
-  it('dragging the right edge extends it', () => {
+  it('dragging the end handle extends it', () => {
     withNote()
-    fireEvent.pointerDown(noteCell(3, 4))
+    fireEvent.pointerDown(grip(noteCell(3, 4), 'end'))
     dragOver([noteCell(3, 7)])
     fireEvent.pointerUp(noteCell(3, 7))
 
     expect(notes()[0]).toMatchObject({ start: 2, length: 6 })
   })
 
-  it('dragging the right edge inward shrinks it', () => {
+  it('dragging the end handle inward shrinks it', () => {
     withNote()
-    fireEvent.pointerDown(noteCell(3, 4))
+    fireEvent.pointerDown(grip(noteCell(3, 4), 'end'))
     dragOver([noteCell(3, 3)])
     fireEvent.pointerUp(noteCell(3, 3))
 
     expect(notes()[0]).toMatchObject({ start: 2, length: 2 })
   })
 
-  it('dragging the left edge extends it backwards, leaving the end put', () => {
+  it('dragging the start handle extends it backwards, leaving the end put', () => {
     withNote()
-    fireEvent.pointerDown(noteCell(3, 2))
+    fireEvent.pointerDown(grip(noteCell(3, 2), 'start'))
     dragOver([noteCell(3, 0)])
     fireEvent.pointerUp(noteCell(3, 0))
 
     expect(notes()[0]).toMatchObject({ start: 0, length: 5 })
+  })
+
+  // The handles are the only thing that resizes, so the rest of an end cell
+  // moves the note like any other part of it.
+  it('dragging an end cell away from its handle moves the note', () => {
+    withNote()
+    fireEvent.pointerDown(noteCell(3, 4))
+    dragOver([noteCell(3, 6)])
+    fireEvent.pointerUp(noteCell(3, 6))
+
+    expect(notes()[0]).toMatchObject({ start: 4, length: 3 })
+  })
+
+  it('puts a handle only on the outer ends of a run', () => {
+    withNote()
+    expect(noteCell(3, 2).querySelector('[data-grip="start"]')).toBeInTheDocument()
+    expect(noteCell(3, 2).querySelector('[data-grip="end"]')).not.toBeInTheDocument()
+    expect(noteCell(3, 3).querySelector('[data-grip]')).not.toBeInTheDocument()
+    expect(noteCell(3, 4).querySelector('[data-grip="end"]')).toBeInTheDocument()
+    expect(noteCell(3, 4).querySelector('[data-grip="start"]')).not.toBeInTheDocument()
   })
 
   it('dragging the middle moves it without changing its length', () => {
@@ -221,17 +251,52 @@ describe('editing notes', () => {
     expect(notes()[0]).toMatchObject({ start: 2 })
   })
 
-  it('a one-step note grows whichever way it is pulled', () => {
+  /** A note of one step, on row 3. */
+  function short(step: number) {
     usePatternStore.setState({
-      pattern: addNote(createEmptyPattern(), { pitch: 2, start: 8, length: 1 }),
+      pattern: addNote(createEmptyPattern(), { pitch: 3, start: step, length: 1 }),
+    })
+    render(<Grid />)
+  }
+
+  // A one-step note is its own start and its own end, so it carries both
+  // handles -- and, between them, a middle it never used to have.
+  it('a one-step note grows from either handle', () => {
+    short(8)
+    fireEvent.pointerDown(grip(noteCell(3, 8), 'end'))
+    dragOver([noteCell(3, 10)])
+    fireEvent.pointerUp(noteCell(3, 10))
+    expect(notes()[0]).toMatchObject({ start: 8, length: 3 })
+  })
+
+  it('a one-step note grows backwards from its start handle', () => {
+    short(8)
+    fireEvent.pointerDown(grip(noteCell(3, 8), 'start'))
+    dragOver([noteCell(3, 5)])
+    fireEvent.pointerUp(noteCell(3, 5))
+    expect(notes()[0]).toMatchObject({ start: 5, length: 4 })
+  })
+
+  // This is what the handles are for: it used to be resizable from anywhere on
+  // it, and movable from nowhere.
+  it('a one-step note moves when dragged by its middle', () => {
+    short(8)
+    fireEvent.pointerDown(noteCell(3, 8))
+    dragOver([noteCell(3, 12)])
+    fireEvent.pointerUp(noteCell(3, 12))
+    expect(notes()[0]).toMatchObject({ start: 12, length: 1 })
+  })
+
+  it('a two-step note moves by its middle too, having no middle cell', () => {
+    usePatternStore.setState({
+      pattern: addNote(createEmptyPattern(), { pitch: 3, start: 4, length: 2 }),
     })
     render(<Grid />)
 
-    fireEvent.pointerDown(noteCell(2, 8))
-    dragOver([noteCell(2, 5)])
-    fireEvent.pointerUp(noteCell(2, 5))
-
-    expect(notes()[0]).toMatchObject({ start: 5, length: 4 })
+    fireEvent.pointerDown(noteCell(3, 5))
+    dragOver([noteCell(3, 9)])
+    fireEvent.pointerUp(noteCell(3, 9))
+    expect(notes()[0]).toMatchObject({ start: 8, length: 2 })
   })
 
   it('an edit never leaves a second copy behind', () => {

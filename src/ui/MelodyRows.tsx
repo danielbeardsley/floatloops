@@ -4,6 +4,7 @@ import { PITCHES_TOP_DOWN, pitchName } from '../audio/scale'
 import { STEPS_PER_BEAT, STEPS_PER_MEASURE } from '../audio/timing'
 import { bridgesGap, cellFill, pitchColor } from './melodyCells'
 import type { NotePreview } from './noteEdits'
+import { NoteGrips } from './NoteGrips'
 
 /**
  * The piano roll, rendered as more rows of the same grid the drums live in.
@@ -107,7 +108,9 @@ export function MelodyRows({
                   style={{ ['--note-color' as string]: pitchColor(pitch) }}
                   aria-label={`${pitchName(pitch)} step ${step + 1}`}
                   aria-pressed={fill !== null}
-                />
+                >
+                  <NoteGrips role={fill && !fill.draft ? fill.role : null} />
+                </button>
               )
             }),
           ])

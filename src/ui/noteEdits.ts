@@ -35,23 +35,35 @@ export type EditMode =
   | 'resize-start'
   /** Drag the right edge; the left edge stays put. */
   | 'resize-end'
-  /**
-   * A one-step note is its own start and its own end, so there is no correct
-   * single answer. Whichever way it is pulled, it grows.
-   */
-  | 'resize-either'
 
-export function editModeFor(role: NoteRole): EditMode {
-  switch (role) {
-    case 'start':
-      return 'resize-start'
-    case 'end':
-      return 'resize-end'
-    case 'middle':
-      return 'move'
-    case 'single':
-      return 'resize-either'
-  }
+/**
+ * Which part of a note a press landed on. The handles are real elements at
+ * either end rather than a measured strip of the cell, so what can be grabbed
+ * is exactly what is drawn, and the two cannot drift apart.
+ */
+export type Grip = 'start' | 'end' | 'body'
+
+/**
+ * What grabbing a note means.
+ *
+ * Resizing lives entirely in the two handles; everything else moves. This is
+ * what makes short notes draggable at all -- a one-step note is its own start
+ * and its own end, and a two-step note is both with nothing in between, so
+ * under the old rule of "the middle moves" neither had a middle to grab and
+ * neither could be moved anywhere.
+ *
+ * A handle only counts on the end of the run it belongs to: the left handle of
+ * a note's last cell is not a thing, so a press there moves.
+ */
+export function editModeFor(role: NoteRole, grip: Grip): EditMode {
+  if (grip === 'start' && (role === 'start' || role === 'single')) return 'resize-start'
+  if (grip === 'end' && (role === 'end' || role === 'single')) return 'resize-end'
+  return 'move'
+}
+
+/** Whether a cell in this part of a run carries a handle on that side. */
+export function hasGrip(role: NoteRole, side: 'start' | 'end'): boolean {
+  return role === 'single' || role === side
 }
 
 function clampTo(value: number, min: number, max: number): number {
@@ -96,16 +108,6 @@ export function applyEdit(
       const originalLast = origin.start + origin.length - 1
       const start = clampTo(cursor.step, 0, originalLast)
       return { pitch: origin.pitch, start, length: originalLast - start + 1 }
-    }
-
-    case 'resize-either': {
-      if (cursor.step > origin.start) {
-        return applyEdit(origin, 'resize-end', grabStep, cursor, totalSteps)
-      }
-      if (cursor.step < origin.start) {
-        return applyEdit(origin, 'resize-start', grabStep, cursor, totalSteps)
-      }
-      return origin
     }
   }
 }

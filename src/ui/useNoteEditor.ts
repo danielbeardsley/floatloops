@@ -4,6 +4,7 @@ import {
   draftFrom,
   editModeFor,
   type EditMode,
+  type Grip,
   type NotePreview,
   type NoteRole,
   type NoteShape,
@@ -33,6 +34,16 @@ export function readNoteTarget(
   if (!Number.isInteger(pitch) || !Number.isInteger(stepIndex)) return null
 
   return { pitch, stepIndex }
+}
+
+/**
+ * Which handle, if any, a press landed on. The handles are elements inside the
+ * cell, so this is a DOM question rather than a measurement -- which also means
+ * a handle is exactly as big as CSS draws it.
+ */
+export function readGrip(element: Element | null): Grip {
+  const grip = element?.closest<HTMLElement>('[data-grip]')?.dataset.grip
+  return grip === 'start' || grip === 'end' ? grip : 'body'
 }
 
 export type NoteUnderCell = { id: string; role: NoteRole; shape: NoteShape }
@@ -134,7 +145,7 @@ export function useNoteEditor({
         publish({
           kind: 'edit',
           id: existing.id,
-          mode: editModeFor(existing.role),
+          mode: editModeFor(existing.role, readGrip(event.target as Element)),
           origin: existing.shape,
           grabStep: target.stepIndex,
           shape: existing.shape,
