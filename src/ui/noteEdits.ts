@@ -8,6 +8,19 @@ export type NoteShape = { pitch: number; start: number; length: number }
 
 export type NoteRole = 'single' | 'start' | 'middle' | 'end'
 
+/**
+ * Which part of a run of cells a given cell is. Shared by the piano roll and
+ * the song grid: a held note and a clip are drawn as one continuous block by
+ * exactly the same rule.
+ */
+export function spanRole(start: number, length: number, step: number): NoteRole {
+  const last = start + length - 1
+  if (start === last) return 'single'
+  if (step === start) return 'start'
+  if (step === last) return 'end'
+  return 'middle'
+}
+
 /** What the piano roll draws while a gesture is in progress. */
 export type NotePreview = {
   shape: NoteShape
@@ -97,11 +110,22 @@ export function applyEdit(
   }
 }
 
-/** Where a fresh drag from `start` to `step` ends up, as a note. */
-export function draftFrom(pitch: number, start: number, step: number): NoteShape {
+/**
+ * Where a fresh drag from `start` to `step` ends up, as a note.
+ *
+ * `minLength` is what a press alone lays down. It is one for a melody note,
+ * but a song clip starts at its beat's full length, so that tapping a four-bar
+ * beat places four bars rather than silently truncating it to one.
+ */
+export function draftFrom(
+  pitch: number,
+  start: number,
+  step: number,
+  minLength = 1,
+): NoteShape {
   // Dragging leftward does not extend a new note backwards; a note is drawn
   // from where it begins, the way a piano roll is read.
-  return { pitch, start, length: Math.max(1, step - start + 1) }
+  return { pitch, start, length: Math.max(minLength, step - start + 1) }
 }
 
 export function sameShape(a: NoteShape, b: NoteShape): boolean {

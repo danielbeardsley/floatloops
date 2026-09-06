@@ -1,8 +1,19 @@
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { openDB } from 'idb'
-import { closeStorage, deletePattern, getPattern, listPatterns, savePattern } from '../storage'
+import {
+  closeStorage,
+  deletePattern,
+  deleteSong,
+  getPattern,
+  getSong,
+  listPatterns,
+  listSongs,
+  savePattern,
+  saveSong,
+} from '../storage'
 import { createEmptyPattern, demoPattern, isStepOn, toggleStep } from '../schema'
+import { addClip, addRow, createEmptySong } from '../song'
 import { KIT } from '../../audio/kit'
 
 async function wipe() {
@@ -15,19 +26,20 @@ async function wipe() {
   })
 }
 
-/** Writes a row straight past the storage layer, to simulate an old save. */
-async function writeRaw(row: unknown) {
-  const db = await openDB('floatloops', 1, {
-    upgrade(database) {
-      if (!database.objectStoreNames.contains('patterns')) {
-        const store = database.createObjectStore('patterns', { keyPath: 'id' })
-        store.createIndex('updatedAt', 'updatedAt')
-      }
-    },
-  })
-  await db.put('patterns', row)
-  db.close()
+/**
+ * Writes a row straight past the storage layer, to simulate an old save.
+ *
+ * The storage layer is asked to create the database first, then this attaches
+ * to whatever version that left behind -- naming a version here would have to
+ * be chased every time the schema moved on.
+ */
+async function writeRaw(row: unknown, store = 'patterns') {
+  await listPatterns()
   await closeStorage()
+
+  const db = await openDB('floatloops')
+  await db.put(store, row)
+  db.close()
 }
 
 beforeEach(wipe)
@@ -119,5 +131,63 @@ describe('reading old or damaged saves', () => {
 
     const all = await listPatterns()
     expect(all.map((p) => p.id)).toEqual(['good'])
+  })
+})
+
+describe('songs', () => {
+  it('starts empty', async () => {
+    expect(await listSongs()).toEqual([])
+  })
+
+  it('saves and reads a song back', async () => {
+    const song = addClip(addRow(createEmptySong('Opener'), 'beat-1'), 0, { start: 1, length: 3 })
+    await saveSong(song)
+
+    const [read] = await listSongs()
+    expect(read.name).toBe('Opener')
+    expect(read.rows[0].patternId).toBe('beat-1')
+    expect(read.rows[0].clips[0]).toMatchObject({ start: 1, length: 3 })
+  })
+
+  it('finds a song by id', async () => {
+    const song = await saveSong(createEmptySong('Opener'))
+    expect((await getSong(song.id))?.name).toBe('Opener')
+  })
+
+  it('has nothing to return for an id that was never saved', async () => {
+    expect(await getSong('nope')).toBeNull()
+  })
+
+  it('deletes a song', async () => {
+    const song = await saveSong(createEmptySong('Opener'))
+    await deleteSong(song.id)
+    expect(await listSongs()).toEqual([])
+  })
+
+  // Songs name beats rather than holding them, so the two stores are independent.
+  it('leaves the beats alone when a song goes', async () => {
+    const pattern = await savePattern(createEmptyPattern('Kept'))
+    const song = await saveSong(addRow(createEmptySong('Opener'), pattern.id))
+    await deleteSong(song.id)
+
+    expect((await listPatterns()).map((p) => p.name)).toEqual(['Kept'])
+  })
+
+  it('shows the most recently edited song first', async () => {
+    // Only Date is faked: fake-indexeddb needs the real timer queue to settle.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(1_000))
+    await saveSong(createEmptySong('First'))
+    vi.setSystemTime(new Date(2_000))
+    await saveSong(createEmptySong('Second'))
+
+    expect((await listSongs()).map((s) => s.name)).toEqual(['Second', 'First'])
+  })
+
+  it('skips a song row it cannot understand instead of failing the whole list', async () => {
+    await writeRaw({ id: 'broken', version: 99 }, 'songs')
+    await saveSong(createEmptySong('Fine'))
+
+    expect((await listSongs()).map((s) => s.name)).toEqual(['Fine'])
   })
 })

@@ -11,13 +11,24 @@ import {
 
 export type { NotePreview }
 
+/**
+ * The row a gesture is on. Called `pitch` because the piano roll came first;
+ * in the song grid the same number is a row index, which is why moving between
+ * rows can be locked off (see `lockLane`).
+ */
 export type NoteTarget = { pitch: number; stepIndex: number }
 
-export function readNoteTarget(element: Element | null): NoteTarget | null {
-  const cell = element?.closest<HTMLElement>('[data-pitch][data-step]')
+/** Which data attribute carries the row. `data-row` in the song grid. */
+export type LaneAttr = 'pitch' | 'row'
+
+export function readNoteTarget(
+  element: Element | null,
+  lane: LaneAttr = 'pitch',
+): NoteTarget | null {
+  const cell = element?.closest<HTMLElement>(`[data-${lane}][data-step]`)
   if (!cell) return null
 
-  const pitch = Number(cell.dataset.pitch)
+  const pitch = Number(cell.dataset[lane])
   const stepIndex = Number(cell.dataset.step)
   if (!Number.isInteger(pitch) || !Number.isInteger(stepIndex)) return null
 
@@ -28,6 +39,21 @@ export type NoteUnderCell = { id: string; role: NoteRole; shape: NoteShape }
 
 export type NoteEditorOptions = {
   container: RefObject<HTMLElement | null>
+  /** Defaults to the piano roll's `data-pitch`. */
+  lane?: LaneAttr
+  /**
+   * Keeps a drag on the row it started on. The song grid sets this: a row *is*
+   * a beat, so dragging a clip upwards would silently change which beat plays
+   * rather than move it.
+   */
+  lockLane?: boolean
+  /**
+   * How much a press alone draws, per lane. One step for a melody note; the
+   * song grid returns the row's beat length, so a press places the whole beat.
+   * Resizing afterwards is unaffected -- shortening a clip stays possible, it
+   * just has to be asked for.
+   */
+  minDraw?: (lane: number) => number
   /** The note covering a cell, if there is one, and which part of it. */
   noteUnder: (target: NoteTarget) => NoteUnderCell | null
   totalSteps: () => number
@@ -65,6 +91,9 @@ type Gesture =
  */
 export function useNoteEditor({
   container,
+  lane = 'pitch',
+  lockLane = false,
+  minDraw,
   noteUnder,
   totalSteps,
   onPreviewChange,
@@ -91,7 +120,7 @@ export function useNoteEditor({
 
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
-      const target = readNoteTarget(event.target as Element)
+      const target = readNoteTarget(event.target as Element, lane)
       if (!target) return
 
       container.current?.setPointerCapture?.(event.pointerId)
@@ -112,10 +141,15 @@ export function useNoteEditor({
 
       publish({
         kind: 'draw',
-        shape: draftFrom(target.pitch, target.stepIndex, target.stepIndex),
+        shape: draftFrom(
+          target.pitch,
+          target.stepIndex,
+          target.stepIndex,
+          minDraw?.(target.pitch) ?? 1,
+        ),
       })
     },
-    [container, noteUnder, publish],
+    [container, lane, minDraw, noteUnder, publish],
   )
 
   const onPointerMove = useCallback(
@@ -123,7 +157,7 @@ export function useNoteEditor({
       const current = gesture.current
       if (!current) return
 
-      const target = readNoteTarget(document.elementFromPoint(event.clientX, event.clientY))
+      const target = readNoteTarget(document.elementFromPoint(event.clientX, event.clientY), lane)
       if (!target) return
 
       if (current.kind === 'draw') {
@@ -131,28 +165,35 @@ export function useNoteEditor({
         // between rows makes it far too easy to draw one you did not mean.
         if (target.pitch !== current.shape.pitch) return
 
-        const shape = draftFrom(current.shape.pitch, current.shape.start, target.stepIndex)
+        const shape = draftFrom(
+          current.shape.pitch,
+          current.shape.start,
+          target.stepIndex,
+          minDraw?.(current.shape.pitch) ?? 1,
+        )
         if (shape.length === current.shape.length) return
         publish({ ...current, shape })
         return
       }
 
+      // With the lane locked, a move slides along the row it grabbed and
+      // nothing else; the row under the finger is ignored rather than obeyed.
+      const pitch = lockLane ? current.origin.pitch : target.pitch
+
       const moved =
-        current.moved ||
-        target.stepIndex !== current.grabStep ||
-        target.pitch !== current.origin.pitch
+        current.moved || target.stepIndex !== current.grabStep || pitch !== current.origin.pitch
 
       const shape = applyEdit(
         current.origin,
         current.mode,
         current.grabStep,
-        { pitch: target.pitch, step: target.stepIndex },
+        { pitch, step: target.stepIndex },
         totalSteps(),
       )
 
       publish({ ...current, shape, moved })
     },
-    [publish, totalSteps],
+    [lane, lockLane, minDraw, publish, totalSteps],
   )
 
   const endGesture = useCallback(

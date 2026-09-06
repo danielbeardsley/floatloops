@@ -3,7 +3,7 @@ import { getVoice } from './kit'
 import { lead } from './voices/lead'
 import { pitchFreq } from './scale'
 import { secondsPerStep } from './timing'
-import { totalSteps, type Pattern } from '../state/schema'
+import type { Arrangement, Voicing } from '../state/arrangement'
 
 /**
  * The lookahead scheduler, after Chris Wilson's "A Tale of Two Clocks".
@@ -90,13 +90,17 @@ export function rebaseForTempoChange(
 
 export type SequencerOptions = {
   engine: Engine
-  /** Read fresh each tick, so edits and tempo changes apply mid-loop. */
-  getPattern: () => Pattern
+  /**
+   * Read fresh each tick, so edits and tempo changes apply mid-loop. What it
+   * returns decides whether a beat or a whole song is playing -- the clock
+   * below neither knows nor cares which.
+   */
+  getArrangement: () => Arrangement
 }
 
 export class Sequencer {
   private readonly engine: Engine
-  private readonly getPattern: () => Pattern
+  private readonly getArrangement: () => Arrangement
 
   private clock: TransportClock = { baseTime: 0, baseStep: 0 }
   private nextStep = 0
@@ -105,7 +109,7 @@ export class Sequencer {
 
   constructor(options: SequencerOptions) {
     this.engine = options.engine
-    this.getPattern = options.getPattern
+    this.getArrangement = options.getArrangement
   }
 
   get isRunning(): boolean {
@@ -115,8 +119,7 @@ export class Sequencer {
   start(): void {
     if (this.isRunning) return
 
-    const pattern = this.getPattern()
-    this.bpm = pattern.bpm
+    this.bpm = this.getArrangement().bpm
     this.clock = { baseTime: this.engine.ctx.currentTime + LEAD_IN, baseStep: 0 }
     this.nextStep = 0
 
@@ -134,15 +137,14 @@ export class Sequencer {
   }
 
   /**
-   * The pattern-relative step under the playhead right now, or null when
-   * stopped. Read by the UI's animation frame loop -- the playhead follows
+   * The step under the playhead right now, relative to the arrangement, or
+   * null when stopped. Read by the UI's animation frame loop -- the playhead follows
    * the audio clock, never the other way round.
    */
   currentStep(): number | null {
     if (!this.isRunning) return null
 
-    const pattern = this.getPattern()
-    const length = totalSteps(pattern)
+    const length = this.getArrangement().steps
     const step = stepAtTime(this.clock, this.bpm, this.engine.ctx.currentTime)
     if (step < 0) return 0
     return ((step % length) + length) % length
@@ -150,11 +152,11 @@ export class Sequencer {
 
   /** Exposed so tests can drive the scheduler without real timers. */
   tick(): void {
-    const pattern = this.getPattern()
+    const arrangement = this.getArrangement()
 
-    if (pattern.bpm !== this.bpm) {
+    if (arrangement.bpm !== this.bpm) {
       this.clock = rebaseForTempoChange(this.clock, this.bpm, this.nextStep)
-      this.bpm = pattern.bpm
+      this.bpm = arrangement.bpm
     }
 
     const { steps, nextStep } = collectDueSteps(
@@ -165,36 +167,46 @@ export class Sequencer {
     )
     this.nextStep = nextStep
 
-    const length = totalSteps(pattern)
+    const length = arrangement.steps
     for (const { absStep, time } of steps) {
-      this.playStep(pattern, absStep % length, time)
+      for (const voicing of arrangement.at(((absStep % length) + length) % length)) {
+        this.play(voicing, time)
+      }
     }
   }
 
-  private playStep(pattern: Pattern, patternStep: number, time: number): void {
+  private play({ pattern, step, gain, melodyLevel }: Voicing, time: number): void {
     const { ctx, master } = this.engine
 
     for (const track of pattern.tracks) {
       if (track.muted) continue
 
-      const velocity = track.steps[patternStep] ?? 0
+      const velocity = track.steps[step] ?? 0
       if (velocity <= 0) continue
 
-      getVoice(track.voiceId).trigger(ctx, master, time, { level: track.level * velocity })
+      getVoice(track.voiceId).trigger(ctx, master, time, {
+        level: track.level * velocity * gain,
+      })
     }
 
+    // Muting is not a level, so a melody muted inside its beat stays muted
+    // however loud the row it is playing on.
     if (pattern.melody.muted) return
+
+    // The song row's fader replaces the beat's melody level rather than
+    // scaling it; on its own, a beat uses the level it was written with.
+    const level = melodyLevel ?? pattern.melody.level
 
     // A note is triggered once, on the step it starts, and told how long to
     // hold -- the sustain lives in the voice, not in the scheduler.
     const stepSeconds = secondsPerStep(this.bpm)
     for (const note of pattern.melody.notes) {
-      if (note.start !== patternStep) continue
+      if (note.start !== step) continue
 
       lead(ctx, master, time, {
         freq: pitchFreq(note.pitch),
         duration: note.length * stepSeconds,
-        level: pattern.melody.level * note.velocity,
+        level: level * note.velocity,
       })
     }
   }

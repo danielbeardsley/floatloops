@@ -25,6 +25,7 @@ way to get standalone mode.
 | Tablet-first, landscape | ~60px grid cells with one measure visible. |
 | 9 sounds x 16 steps per measure | Seven drums then two synth voices; scroll sideways, `+` appends a measure. |
 | Separate library screen, not a side panel | Matches how the app is meant to be navigated. |
+| A song names its beats rather than copying them | One source of truth: fixing a beat fixes every song using it. |
 | React over Preact | Preact's bundle-size win is moot for a precached offline app. |
 
 ## Architecture
@@ -39,12 +40,15 @@ src/
     voices/          one module per drum sound
   state/
     schema.ts        saved pattern format + pure, immutable edit helpers
-    migrate.ts       turns anything out of storage into a usable Pattern
+    song.ts          saved song format + its edit helpers and playback maths
+    arrangement.ts   what the scheduler plays: a length, and who sounds where
+    migrate.ts       turns anything out of storage into a usable Pattern or Song
     storage.ts       IndexedDB CRUD; the only place that touches the database
     preferences.ts   per-device settings in localStorage, guarded reads
     patternStore.ts  zustand store for the beat being edited
+    songStore.ts     zustand store for the song being arranged
     settingsStore.ts zustand store for preferences
-    libraryStore.ts  zustand store for the saved list
+    libraryStore.ts  zustand store for the saved beats and songs
     transport.ts     the one Sequencer, outside React
   ui/                screens and components
   test/              mock Web Audio graph for tests
@@ -58,6 +62,10 @@ Two rules that the rest of the app depends on:
 2. **Visuals never drive audio.** Notes are scheduled ahead of time against
    `audioContext.currentTime`; the playhead is drawn separately from a
    `requestAnimationFrame` loop that only reads that clock.
+3. **The scheduler plays an `Arrangement`, not a `Pattern`.** A beat and a
+   whole song are the same thing to it: a length in steps, and for any step
+   the list of patterns sounding there. That indirection is the only reason
+   songs did not need a second scheduler.
 
 ## Saved beats
 
@@ -71,6 +79,53 @@ than mangled.
 
 Saving is still an explicit button press, so a reload loses unsaved work. See
 the roadmap.
+
+## Songs
+
+A song is rows over bars: each **row** is one beat from the library, each
+**column** is one bar, and a **clip** is a run of bars in which that beat plays.
+Rows layer, so a drum beat and a melodic one can run at once.
+
+A row stores a beat's **id**, not a copy of it. Editing a beat updates every
+song that uses it, and a song stays a few hundred bytes. The price is that a
+row can outlive the beat it names, which is handled rather than prevented: the
+row draws as *Missing beat* and plays silence, and the rest of the song plays
+on. `migrateSong` keeps the dangling id rather than dropping the row, because
+the beat may simply not be loaded yet.
+
+The beat **loops inside its clip**, so a one-bar beat dragged across four bars
+plays four times and a two-bar beat plays 1,2,1,2. Every clip length is
+therefore valid, which is why removing a bar *shortens* a clip it cuts through
+instead of dropping it -- the opposite of what removing a measure does to a
+melody note, where there is no honest new length.
+
+Clip length and beat length are independent, so the grid has to say how the two
+line up or a beat gets truncated with nothing on screen to explain it:
+
+| | |
+| --- | --- |
+| A press places the beat **whole** | Tapping a four-bar beat lays down four bars. `minDraw` on the gesture layer; resizing afterwards can still shorten it, because cutting to a fill is a real thing to want. |
+| The gap stays **open at a loop point** | Bars inside one pass are bridged and divided by a hairline; where the beat starts again the full gap shows through, so the repeats read as repeats. |
+| `xN` on the first cell | How many times the beat plays, not how many bars -- and only when it plays more than once. |
+| A **striped** tail | The last pass is cut short, either by a deliberate resize or by the end of the song. Placement clamps to the song's length rather than growing it, so this is what makes that visible. |
+| `4 bars` in the row label | How long the beat itself is, which is what decides where the seams fall. |
+
+The **song's tempo wins** over each beat's own. Beats written at different
+tempos would otherwise make the music lurch every time a new one came in.
+
+The row's fader scales the beat's drums, but **replaces its melody level**
+rather than scaling it. A beat's melody was balanced against that beat's own
+drums, which is the wrong question once it is one row among several -- and two
+faders in series means the row's does not mean what it says. So in a song the
+row fader *is* the melody's level, which is also the only way to make a quietly
+written melody louder. Muting is not a level: a melody switched off inside its
+beat stays off however loud its row.
+
+The grid reuses the piano roll's gesture layer whole: a clip is drawn, resized
+from either end, slid along and tapped away exactly like a note. The one
+difference is `lockLane` -- a clip cannot change rows, because a row *is* which
+beat plays, so dragging one upward would silently swap the beat rather than
+move the block.
 
 ## The melody
 
@@ -138,8 +193,9 @@ corner turns that off; the choice is remembered per device in localStorage.
 - [x] **4** Multi-measure: horizontal scroll, `+`, playhead auto-follow
 - [x] **5** Save/load patterns to IndexedDB
 - [x] **6** Library screen: list, thumbnails, play in place, duplicate/delete
-- [ ] **7** PWA polish: PNG icons, wake lock, install hint, worker-based tick
-- [ ] **8** Extras: swing, accents, share-via-URL, alternate kits, undo,
+- [x] **7** Songs: arrange saved beats over bars, one row per beat
+- [ ] **8** PWA polish: PNG icons, wake lock, install hint, worker-based tick
+- [ ] **9** Extras: swing, accents, share-via-URL, alternate kits, undo,
       autosave the working beat so a reload cannot lose it
 
 ## Known platform traps

@@ -1,5 +1,6 @@
 import { HashRouter, NavLink, Route, Routes } from 'react-router-dom'
 import { SequencerScreen } from './SequencerScreen'
+import { SongScreen } from './SongScreen'
 import { LibraryScreen } from './LibraryScreen'
 import './app.css'
 
@@ -16,7 +17,10 @@ export function App() {
           <h1 className="app__title">FloatLoops</h1>
           <nav className="app__nav">
             <NavLink to="/" end className="app__link">
-              Sequencer
+              Beat
+            </NavLink>
+            <NavLink to="/song" className="app__link">
+              Song
             </NavLink>
             <NavLink to="/library" className="app__link">
               Library
@@ -27,6 +31,7 @@ export function App() {
         <main className="app__main">
           <Routes>
             <Route path="/" element={<SequencerScreen />} />
+            <Route path="/song" element={<SongScreen />} />
             <Route path="/library" element={<LibraryScreen />} />
           </Routes>
         </main>

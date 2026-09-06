@@ -368,8 +368,8 @@
   font-size: 22px;
 }
 
-.library__head .button {
-  margin-left: auto;
+/* The app's plain button, wherever one is needed outside the grid. */
+.button {
   padding: 14px 22px;
   border-radius: var(--radius);
   background: var(--panel-raised);
@@ -377,9 +377,17 @@
   font-size: 16px;
 }
 
-.library__head .button--primary {
+.button--primary {
   background: var(--accent-dim);
   border-color: var(--accent);
+}
+
+.button:disabled {
+  opacity: 0.4;
+}
+
+.library__head .button {
+  margin-left: auto;
 }
 
 .library__message {
@@ -553,7 +561,9 @@
 }
 
 /* Fills the grid gap to the right, so a held note looks continuous rather than
-   like a row of separate blocks. */
+   like a row of separate blocks. It starts at the padding box, so a 1px hairline
+   of the gap survives -- in the song grid that reads as the bar line inside one
+   pass of a beat, against the full gap left open where the beat starts again. */
 .note--bridge::after {
   content: '';
   position: absolute;
@@ -602,4 +612,257 @@
   border-radius: 2px;
   background: var(--bg);
   opacity: 0.45;
+}
+
+/* --- song grid ----------------------------------------------------------- */
+
+/* A bar is a much bigger unit than a step, so a song column is wider and a
+   row taller -- but the column still has to be narrow enough that a whole
+   eight-bar song is roughly one screenful. */
+.grid--song {
+  --label-w: 240px;
+  --cell: 88px;
+}
+
+.grid--song .row__label {
+  height: 72px;
+}
+
+.row__label--song {
+  gap: 6px;
+}
+
+.row__top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.row__top .row__name {
+  flex: 1;
+}
+
+/* How long the beat itself is. It is what decides where a block loops, so it
+   has to be on screen next to the blocks. */
+.row__bars {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--panel-raised);
+  color: var(--text-dim);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.grid--song .row__level {
+  flex: 1;
+  min-width: 0;
+}
+
+/* A row whose beat has been deleted still plays nothing and still takes up
+   space, so it says so rather than looking like an empty one. */
+.row__label--missing .row__name {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.row__action {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.row__action:disabled {
+  opacity: 0.4;
+}
+
+.row__action--remove {
+  padding: 3px 7px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.row__action--remove:hover,
+.row__action--remove:focus-visible {
+  color: var(--accent);
+}
+
+.ruler__measure--bar {
+  /* One column per bar, not sixteen. */
+  grid-column: span 1;
+}
+
+/* No border-radius here: .cell already sets it, and the note--start/middle/end
+   rules that square off the inside of a run come earlier in this file. Setting
+   it again would win on source order and pinch every bar of a block. */
+.clip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 72px;
+}
+
+.clip--on {
+  background: var(--note-color);
+  border-color: var(--note-color);
+}
+
+/*
+ * A pass the block ends before the beat has finished. Striping it is the only
+ * cue that the last time through gets cut off -- the block itself looks no
+ * different, and silently dropping half a beat is exactly the surprise this is
+ * here to prevent. Must follow .clip--on, whose shorthand clears the image.
+ */
+.clip--cut {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(0 0 0 / 0.28) 0 6px,
+    transparent 6px 12px
+  );
+}
+
+/* How many bars the clip covers. Only the first cell carries it, so a long
+   clip reads as one block with one number on it. */
+/* How many times the beat plays, on the first cell of a block that repeats. */
+.clip__bars {
+  color: var(--bg);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.song-add {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+/* The row spans the whole scrollable width, so its contents are pinned rather
+   than the row itself -- the same trick the melody header uses. */
+.song-add__inner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 420px;
+  padding-right: 12px;
+  background: var(--bg);
+}
+
+.song-add__note {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+/* A song with few rows leaves a lot of empty grid below it, and a full-height
+   dashed column beside two rows reads as a mistake. */
+.grid--song .grid__add {
+  align-self: start;
+  min-height: 0;
+  height: 100px;
+  margin-top: 34px;
+}
+
+/* --- beat picker --------------------------------------------------------- */
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(0 0 0 / 0.55);
+}
+
+.sheet__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(720px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 20px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.sheet__title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.sheet__head .card__button {
+  flex: none;
+  min-width: 96px;
+}
+
+.sheet__new {
+  width: 100%;
+}
+
+.sheet__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.pick {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.pick__shape {
+  display: block;
+  height: 64px;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.pick__name {
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pick__meta {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* --- library sections ---------------------------------------------------- */
+
+.library__section + .library__section {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.library__section .library__message {
+  margin-bottom: 0;
 }

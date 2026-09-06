@@ -10,6 +10,7 @@ import {
 } from '../scheduler'
 import { secondsPerStep } from '../timing'
 import { addNote, createEmptyPattern, setStep, toggleMute, type Pattern } from '../../state/schema'
+import { patternArrangement } from '../../state/arrangement'
 import { MockAudioContext, asAudioContext } from '../../test/mockAudioContext'
 import type { Engine } from '../context'
 
@@ -103,7 +104,7 @@ describe('Sequencer', () => {
   let pattern: Pattern
 
   function makeSequencer() {
-    return new Sequencer({ engine, getPattern: () => pattern })
+    return new Sequencer({ engine, getArrangement: () => patternArrangement(pattern) })
   }
 
   /** A pattern where only the kick makes a sound, so oscillators can be counted. */
@@ -270,7 +271,7 @@ describe('Sequencer and the melody', () => {
   }
 
   function makeSequencer() {
-    return new Sequencer({ engine, getPattern: () => pattern })
+    return new Sequencer({ engine, getArrangement: () => patternArrangement(pattern) })
   }
 
   beforeEach(() => {
@@ -313,7 +314,7 @@ describe('Sequencer and the melody', () => {
     pattern = noteOnly({ pitch: 0, start: 0, length: 1 })
     const shortSeq = new Sequencer({
       engine: { ctx: asAudioContext(shortCtx), master: shortMaster as unknown as GainNode },
-      getPattern: () => pattern,
+      getArrangement: () => patternArrangement(pattern),
     })
     shortSeq.start()
     const short = shortCtx.oscillators[0].stoppedAt! - shortCtx.oscillators[0].startedAt!
@@ -333,7 +334,7 @@ describe('Sequencer and the melody', () => {
     pattern = { ...pattern, bpm: 60 }
     const slow = new Sequencer({
       engine: { ctx: asAudioContext(slowCtx), master: slowMaster as unknown as GainNode },
-      getPattern: () => pattern,
+      getArrangement: () => patternArrangement(pattern),
     })
     slow.start()
     const atHalfSpeed = slowCtx.oscillators[0].stoppedAt! - slowCtx.oscillators[0].startedAt!

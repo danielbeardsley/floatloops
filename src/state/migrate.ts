@@ -9,6 +9,17 @@ import {
   type Pattern,
   type Track,
 } from './schema'
+import {
+  DEFAULT_SONG_BARS,
+  DEFAULT_SONG_BPM,
+  MAX_SONG_BARS,
+  MAX_SONG_ROWS,
+  ROW_DEFAULTS,
+  SONG_VERSION,
+  type Clip,
+  type Song,
+  type SongRow,
+} from './song'
 import { isPitch } from '../audio/scale'
 import { STEPS_PER_MEASURE, clampBpm } from '../audio/timing'
 
@@ -124,6 +135,80 @@ export function migratePattern(raw: unknown): Pattern | null {
     tracks: migrateTracks(raw.tracks, measures),
     melody: migrateMelody(raw.melody, measures * STEPS_PER_MEASURE),
     version: PATTERN_VERSION,
+    createdAt: asNumber(raw.createdAt, now),
+    updatedAt: asNumber(raw.updatedAt, now),
+  }
+}
+
+/* --- songs --------------------------------------------------------------- */
+
+/**
+ * The same contract for songs: anything unreadable is refused, anything
+ * merely odd is repaired. A row naming a beat that no longer exists is *not*
+ * odd -- it is expected, since beats and songs are deleted independently --
+ * so the id is kept as written and the song screen shows the row as missing.
+ */
+function migrateClips(value: unknown, bars: number): Clip[] {
+  const source = Array.isArray(value) ? value : []
+  const clips: Clip[] = []
+
+  for (const raw of source) {
+    if (!isRecord(raw)) continue
+
+    const start = Math.floor(asNumber(raw.start, -1))
+    if (!Number.isInteger(start) || start < 0 || start >= bars) continue
+
+    clips.push({
+      id: asString(raw.id, createId()),
+      start,
+      length: Math.max(1, Math.min(bars - start, Math.floor(asNumber(raw.length, 1)))),
+    })
+  }
+
+  return clips
+}
+
+function migrateRows(value: unknown, bars: number): SongRow[] {
+  const source = Array.isArray(value) ? value : []
+  const rows: SongRow[] = []
+
+  for (const raw of source) {
+    if (!isRecord(raw)) continue
+
+    // A row with no beat behind it has nothing to play and nothing to fix.
+    const patternId = asString(raw.patternId, '')
+    if (!patternId) continue
+
+    rows.push({
+      id: asString(raw.id, createId()),
+      patternId,
+      level: Math.min(1, Math.max(0, asNumber(raw.level, ROW_DEFAULTS.level))),
+      muted: raw.muted === true,
+      clips: migrateClips(raw.clips, bars),
+    })
+
+    if (rows.length === MAX_SONG_ROWS) break
+  }
+
+  return rows
+}
+
+export function migrateSong(raw: unknown): Song | null {
+  if (!isRecord(raw)) return null
+
+  const version = asNumber(raw.version, 0)
+  if (version > SONG_VERSION) return null
+
+  const bars = Math.min(MAX_SONG_BARS, Math.max(1, Math.floor(asNumber(raw.bars, DEFAULT_SONG_BARS))))
+  const now = Date.now()
+
+  return {
+    id: asString(raw.id, createId()),
+    name: asString(raw.name, 'Untitled'),
+    bpm: clampBpm(asNumber(raw.bpm, DEFAULT_SONG_BPM)),
+    bars,
+    rows: migrateRows(raw.rows, bars),
+    version: SONG_VERSION,
     createdAt: asNumber(raw.createdAt, now),
     updatedAt: asNumber(raw.updatedAt, now),
   }

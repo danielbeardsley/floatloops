@@ -1,5 +1,5 @@
 import { noteAt, noteRole, type Melody } from '../state/schema'
-import type { NotePreview, NoteRole } from './noteEdits'
+import { spanRole, type NotePreview, type NoteRole } from './noteEdits'
 
 export type CellFill = {
   role: NoteRole
@@ -27,7 +27,7 @@ export function cellFill(
     const { start, length } = preview.shape
     const last = start + length - 1
     if (step >= start && step <= last) {
-      return { role: roleWithin(start, last, step), draft: true, noteId: null }
+      return { role: spanRole(start, length, step), draft: true, noteId: null }
     }
   }
 
@@ -36,13 +36,6 @@ export function cellFill(
   if (preview && preview.editing === note.id) return null
 
   return { role: noteRole(note, step), draft: false, noteId: note.id }
-}
-
-function roleWithin(start: number, last: number, step: number): NoteRole {
-  if (start === last) return 'single'
-  if (step === start) return 'start'
-  if (step === last) return 'end'
-  return 'middle'
 }
 
 /** Whether the note continues past this cell, so the gap should be bridged. */
