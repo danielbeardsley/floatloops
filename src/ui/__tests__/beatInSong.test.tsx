@@ -13,7 +13,7 @@ import {
   toggleStep,
   type Pattern,
 } from '../../state/schema'
-import { isUnsaved } from '../unsavedBeat'
+import { isUnsaved } from '../unsaved'
 import { addRow, createEmptySong } from '../../state/song'
 
 const navigate = vi.fn()

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useLibraryStore } from '../state/libraryStore'
 import { usePatternStore } from '../state/patternStore'
 import { useSongStore } from '../state/songStore'
-import { confirmLeavingBeatForSong, isUnsaved } from './unsavedBeat'
+import { confirmLeavingBeatForSong, isUnsaved } from './unsaved'
 
 /**
  * The way back, shown while the beat in the sequencer is one the open song

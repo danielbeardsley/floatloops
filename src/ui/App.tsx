@@ -1,5 +1,5 @@
 import { HashRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom'
-import { confirmLeavingBeatForSong } from './unsavedBeat'
+import { confirmLeavingBeatForSong, confirmLeavingSongForLibrary } from './unsaved'
 import { SequencerScreen } from './SequencerScreen'
 import { SongScreen } from './SongScreen'
 import { LibraryScreen } from './LibraryScreen'
@@ -15,12 +15,20 @@ import './app.css'
  * no stop button.
  */
 /**
- * Leaving the sequencer by this link is the other way back to a song, so it
- * carries the same warning the way-back bar does: a song row names a library
- * beat, and unsaved edits are not in it.
+ * The two links that can walk away from unsaved work carry the warnings.
+ *
+ * Sequencer to song: a song row names a *library* beat, so unsaved edits are
+ * simply not in what the song plays. Song to library: the library is where an
+ * arrangement is replaced, by opening another or starting a new one.
+ *
+ * Song to beat is not guarded. Nothing is lost by it -- the song is still
+ * there when you come back, which is the whole point of the way-back bar --
+ * and it is the ordinary way to fix a beat mid-arrangement.
  */
 export function Nav() {
-  const onSequencer = useLocation().pathname === '/'
+  const path = useLocation().pathname
+  const onSequencer = path === '/'
+  const onSong = path === '/song'
 
   return (
     <nav className="app__nav">
@@ -36,7 +44,13 @@ export function Nav() {
       >
         Song
       </NavLink>
-      <NavLink to="/library" className="app__link">
+      <NavLink
+        to="/library"
+        className="app__link"
+        onClick={(event) => {
+          if (onSong && !confirmLeavingSongForLibrary()) event.preventDefault()
+        }}
+      >
         Library
       </NavLink>
     </nav>

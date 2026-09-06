@@ -138,6 +138,16 @@ would write, not by timestamps: an edit in the same millisecond as a save would
 read as no edit, and a note dragged away and back rebuilds the note list
 without changing the music.
 
+The song itself is marked **Unsaved** in its transport once it differs from
+the library's copy, and leaving for the library asks first. A song is not
+merely out of date while it is unsaved, the way a beat is -- the library is
+where an arrangement gets *replaced*, by opening another song or starting a
+new one, so those two acts ask as well. That second guard is the one that has
+to hold: the boundary warning can be walked past, or missed entirely by
+reaching the library from the beat screen. Going from the song to the beat
+screen is deliberately not guarded, since nothing is lost by it and fixing a
+beat mid-arrangement is the ordinary workflow.
+
 The grid reuses the piano roll's gesture layer whole: a clip is drawn, resized
 from either end, slid along and tapped away exactly like a note. The one
 difference is `lockLane` -- a clip cannot change rows, because a row *is* which

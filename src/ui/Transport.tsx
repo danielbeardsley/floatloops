@@ -1,9 +1,10 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import { usePatternStore } from '../state/patternStore'
 import { useSongStore } from '../state/songStore'
 import { useLibraryStore } from '../state/libraryStore'
 import { toggleSongPlay, togglePlay } from '../state/transport'
 import { MAX_BPM, MIN_BPM } from '../audio/timing'
+import { songIsUnsaved } from './unsaved'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
 
@@ -134,14 +135,18 @@ export function Transport() {
   )
 }
 
-export function SongTransport({ children }: { children?: ReactNode }) {
+export function SongTransport() {
   const isPlaying = useSongStore((s) => s.isPlaying)
-  const bpm = useSongStore((s) => s.song.bpm)
-  const name = useSongStore((s) => s.song.name)
+  const song = useSongStore((s) => s.song)
   const setBpm = useSongStore((s) => s.setBpm)
   const rename = useSongStore((s) => s.rename)
   const setSong = useSongStore((s) => s.setSong)
   const saveToLibrary = useLibraryStore((s) => s.saveSong)
+  const saved = useLibraryStore((s) => s.songs.find((item) => item.id === song.id))
+
+  // Leaving for the library is where an arrangement gets thrown away, so the
+  // warning there cannot be the first you hear of it.
+  const unsaved = useMemo(() => songIsUnsaved(song, saved), [song, saved])
 
   const onSave = useCallback(async () => {
     setSong(await saveToLibrary(useSongStore.getState().song))
@@ -150,15 +155,15 @@ export function SongTransport({ children }: { children?: ReactNode }) {
   return (
     <TransportBar
       isPlaying={isPlaying}
-      name={name}
-      bpm={bpm}
+      name={song.name}
+      bpm={song.bpm}
       nameLabel="Song name"
       onToggle={() => void toggleSongPlay()}
       onRename={rename}
       onBpm={setBpm}
       onSave={onSave}
     >
-      {children}
+      {unsaved ? <span className="unsaved-mark">Unsaved</span> : null}
     </TransportBar>
   )
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useLibraryStore } from '../state/libraryStore'
 import { useSongStore } from '../state/songStore'
 import { playSongPreview, stop } from '../state/transport'
+import { confirmDiscardingSong } from './unsaved'
 import type { Song } from '../state/song'
 import { SongThumbnail } from './SongThumbnail'
 
@@ -22,6 +23,10 @@ export function SongCard({ song }: { song: Song }) {
   }, [isPreviewing, song])
 
   const onOpen = useCallback(() => {
+    // Opening replaces whatever is being arranged, including a song opened
+    // from here a moment ago and edited since.
+    if (!confirmDiscardingSong(`Opening "${song.name}"`)) return
+
     stop()
     setSong(song)
     void navigate('/song')

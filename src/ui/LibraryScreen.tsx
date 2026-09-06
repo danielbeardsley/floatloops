@@ -9,6 +9,7 @@ import { createEmptySong } from '../state/song'
 import { PatternCard } from './PatternCard'
 import { SongCard } from './SongCard'
 import { useStopOnLeave } from './useStopOnLeave'
+import { confirmDiscardingSong } from './unsaved'
 
 export function LibraryScreen() {
   const navigate = useNavigate()
@@ -35,6 +36,8 @@ export function LibraryScreen() {
   }
 
   const onNewSong = () => {
+    if (!confirmDiscardingSong('Starting a new song')) return
+
     stop()
     setSong(createEmptySong())
     void navigate('/song')
