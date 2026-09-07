@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { migratePattern } from '../migrate'
 import { PATTERN_VERSION, createEmptyPattern, demoPattern, isStepOn } from '../schema'
+import { pitchName } from '../../audio/scale'
 import { KIT, VOICE_IDS } from '../../audio/kit'
 import { STEPS_PER_MEASURE } from '../../audio/timing'
 
@@ -149,6 +150,23 @@ describe('migratePattern and the melody', () => {
   it('invents an id for a note that lost one', () => {
     const migrated = withMelody({ notes: [{ pitch: 0, start: 0, length: 1 }] })
     expect(migrated.melody.notes[0].id.length).toBeGreaterThan(0)
+  })
+
+  it('lifts pitches saved before the scale grew downwards, so old melodies still sound the same', () => {
+    // Pitch 0 meant A3 when the scale started there; A3 is four rows up now.
+    const legacy = {
+      ...createEmptyPattern(),
+      version: 2,
+      melody: { notes: [{ id: 'n1', pitch: 0, start: 0, length: 1 }] },
+    }
+    const note = migratePattern(legacy)!.melody.notes[0]
+    expect(note.pitch).toBe(4)
+    expect(pitchName(note.pitch)).toBe('A3')
+  })
+
+  it('leaves pitches alone once they were saved against the current scale', () => {
+    const migrated = withMelody({ notes: [{ pitch: 0, start: 0, length: 1 }] })
+    expect(migrated.melody.notes[0].pitch).toBe(0)
   })
 
   it('ignores junk in the notes list without losing the good ones', () => {

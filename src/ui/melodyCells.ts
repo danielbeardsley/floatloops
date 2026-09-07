@@ -1,4 +1,5 @@
 import { noteAt, noteRole, type Melody } from '../state/schema'
+import { PITCH_COUNT } from '../audio/scale'
 import { spanRole, type NotePreview, type NoteRole } from './noteEdits'
 
 export type CellFill = {
@@ -43,7 +44,17 @@ export function bridgesGap(fill: CellFill | null): boolean {
   return fill !== null && (fill.role === 'start' || fill.role === 'middle')
 }
 
-/** Blue through purple as the scale rises, so pitch is readable at a glance. */
+/**
+ * Blue through purple as the scale rises, so pitch is readable at a glance.
+ *
+ * The hues are spread across however many pitches the scale has rather than
+ * stepped by a fixed amount, so growing the scale stretches the same gradient
+ * instead of running the top rows off the end of it into red.
+ */
+const HUE_LOW = 205
+const HUE_HIGH = 282
+
 export function pitchColor(pitch: number): string {
-  return `hsl(${205 + pitch * 11} 72% 62%)`
+  const span = Math.max(1, PITCH_COUNT - 1)
+  return `hsl(${HUE_LOW + ((HUE_HIGH - HUE_LOW) * pitch) / span} 72% 62%)`
 }

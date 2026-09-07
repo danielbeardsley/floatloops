@@ -11,8 +11,15 @@ describe('the scale', () => {
   })
 
   it('is pentatonic, so nothing in it can clash', () => {
-    // Five notes to the octave: the sixth is double the first.
-    expect(SCALE[5].freq).toBeCloseTo(SCALE[0].freq * 2, 1)
+    // Five notes to the octave: every note five up is double the one below it.
+    for (let i = 0; i + 5 < SCALE.length; i += 1) {
+      expect(SCALE[i + 5].freq).toBeCloseTo(SCALE[i].freq * 2, 1)
+    }
+  })
+
+  it('spans the range the piano roll offers, low C to high G', () => {
+    expect(SCALE[0].name).toBe('C3')
+    expect(SCALE[PITCH_COUNT - 1].name).toBe('G5')
   })
 
   it('knows which pitches exist', () => {

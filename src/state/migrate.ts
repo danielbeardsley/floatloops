@@ -76,19 +76,30 @@ function migrateTracks(value: unknown, measures: number): Track[] {
 }
 
 /**
+ * Version 3 grew the scale by four notes below the old bottom, so every pitch
+ * index written before it now names a note four rows too low. Shifting them
+ * keeps an old melody sounding exactly as it was written.
+ */
+const PITCHES_ADDED_BELOW = 4
+
+function pitchShiftFor(version: number): number {
+  return version < 3 ? PITCHES_ADDED_BELOW : 0
+}
+
+/**
  * Notes are dropped rather than repaired when their position makes no sense --
  * a note at a pitch this build does not have, or starting past the end of the
  * pattern, has no correct interpretation. Length is clamped, since a note
  * running off the end has an obvious one.
  */
-function migrateNotes(value: unknown, length: number): Note[] {
+function migrateNotes(value: unknown, length: number, pitchShift: number): Note[] {
   const source = Array.isArray(value) ? value : []
   const notes: Note[] = []
 
   for (const raw of source) {
     if (!isRecord(raw)) continue
 
-    const pitch = Math.round(asNumber(raw.pitch, -1))
+    const pitch = Math.round(asNumber(raw.pitch, -1)) + pitchShift
     if (!isPitch(pitch)) continue
 
     const start = Math.floor(asNumber(raw.start, -1))
@@ -107,12 +118,12 @@ function migrateNotes(value: unknown, length: number): Note[] {
 }
 
 /** A pattern saved before the melody existed simply gets an empty one. */
-function migrateMelody(value: unknown, length: number): Melody {
+function migrateMelody(value: unknown, length: number, version: number): Melody {
   const record = isRecord(value) ? value : {}
   return {
     level: Math.min(1, Math.max(0, asNumber(record.level, MELODY_DEFAULTS.level))),
     muted: record.muted === true,
-    notes: migrateNotes(record.notes, length),
+    notes: migrateNotes(record.notes, length, pitchShiftFor(version)),
   }
 }
 
@@ -133,7 +144,7 @@ export function migratePattern(raw: unknown): Pattern | null {
     bpm: clampBpm(asNumber(raw.bpm, 110)),
     measures,
     tracks: migrateTracks(raw.tracks, measures),
-    melody: migrateMelody(raw.melody, measures * STEPS_PER_MEASURE),
+    melody: migrateMelody(raw.melody, measures * STEPS_PER_MEASURE, version),
     version: PATTERN_VERSION,
     createdAt: asNumber(raw.createdAt, now),
     updatedAt: asNumber(raw.updatedAt, now),

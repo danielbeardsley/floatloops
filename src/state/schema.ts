@@ -6,7 +6,7 @@ import { isPitch } from '../audio/scale'
  * The saved-pattern format. Every change here needs a bump to PATTERN_VERSION
  * and a migration, because these objects outlive the code that wrote them.
  */
-export const PATTERN_VERSION = 2
+export const PATTERN_VERSION = 3
 
 /**
  * 0 means the step is off. Anything above is the hit's velocity, so accents

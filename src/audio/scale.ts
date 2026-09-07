@@ -13,6 +13,10 @@ export type ScaleNote = {
 }
 
 export const SCALE: readonly ScaleNote[] = [
+  { name: 'C3', freq: 130.81 },
+  { name: 'D3', freq: 146.83 },
+  { name: 'E3', freq: 164.81 },
+  { name: 'G3', freq: 196.0 },
   { name: 'A3', freq: 220.0 },
   { name: 'C4', freq: 261.63 },
   { name: 'D4', freq: 293.66 },
@@ -21,6 +25,8 @@ export const SCALE: readonly ScaleNote[] = [
   { name: 'A4', freq: 440.0 },
   { name: 'C5', freq: 523.25 },
   { name: 'D5', freq: 587.33 },
+  { name: 'E5', freq: 659.25 },
+  { name: 'G5', freq: 783.99 },
 ] as const
 
 export const PITCH_COUNT = SCALE.length

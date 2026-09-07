@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { bridgesGap, cellFill, pitchColor } from '../melodyCells'
 import { draftFrom, type NotePreview } from '../noteEdits'
 import { addNote, createEmptyPattern } from '../../state/schema'
+import { PITCH_COUNT } from '../../audio/scale'
 
 const empty = createEmptyPattern().melody
 const held = addNote(createEmptyPattern(), { pitch: 2, start: 4, length: 3 }).melody
@@ -99,7 +100,7 @@ describe('draftFrom', () => {
 
 describe('pitchColor', () => {
   it('gives every pitch its own colour, so height is readable at a glance', () => {
-    const colors = [0, 1, 2, 3, 4, 5, 6, 7].map(pitchColor)
+    const colors = Array.from({ length: PITCH_COUNT }, (_, pitch) => pitchColor(pitch))
     expect(new Set(colors).size).toBe(colors.length)
   })
 })

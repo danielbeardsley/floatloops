@@ -24,7 +24,7 @@ way to get standalone mode.
 | Installable PWA | Fastest path to something playable, no app store. |
 | Tablet-first, landscape | ~60px grid cells with one measure visible. |
 | 9 sounds x 16 steps per measure | Seven drums then two synth voices; scroll sideways, `+` appends a measure. |
-| Sections fold rather than scroll | Nine drums plus eight pitches will not fit a tablet, and folding beats hunting. |
+| Sections fold rather than scroll | Nine drums plus fourteen pitches will not fit a tablet, and folding beats hunting. |
 | Separate library screen, not a side panel | Matches how the app is meant to be navigated. |
 | A song names its beats rather than copying them | One source of truth: fixing a beat fixes every song using it. |
 | React over Preact | Preact's bundle-size win is moot for a precached offline app. |
@@ -172,8 +172,8 @@ are remembered per device.
 
 ## The melody
 
-Below the drums, a collapsible piano roll: eight pitches of A minor pentatonic,
-so no combination of notes can clash. Notes have a start and a length, snapped
+Below the drums, a collapsible piano roll: fourteen pitches of A minor
+pentatonic, C3 up to G5, so no combination of notes can clash. Notes have a start and a length, snapped
 to the grid, which is why the melody is a list of `Note` objects rather than
 another grid of cells.
 
