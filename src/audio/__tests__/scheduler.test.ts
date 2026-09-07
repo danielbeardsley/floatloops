@@ -9,7 +9,14 @@ import {
   timeOfStep,
 } from '../scheduler'
 import { secondsPerStep } from '../timing'
-import { addNote, createEmptyPattern, setStep, toggleMute, type Pattern } from '../../state/schema'
+import {
+  addNote,
+  createEmptyPattern,
+  setMelodyVoice,
+  setStep,
+  toggleMute,
+  type Pattern,
+} from '../../state/schema'
 import { patternArrangement } from '../../state/arrangement'
 import { MockAudioContext, asAudioContext } from '../../test/mockAudioContext'
 import type { Engine } from '../context'
@@ -360,6 +367,28 @@ describe('Sequencer and the melody', () => {
     // The lead's two oscillators, and no kick.
     expect(ctx.oscillators).toHaveLength(2)
     seq.stop()
+  })
+
+  // The scheduler asks the kit for the beat's voice rather than knowing any
+  // of them, so the only thing worth checking is that it asks.
+  it('plays the melody with the sound the beat was saved with', () => {
+    const seq = makeSequencer()
+    seq.start()
+    // The lead is a sawtooth over a square sub.
+    expect(ctx.oscillators.map((osc) => osc.type)).toEqual(['sawtooth', 'square'])
+    seq.stop()
+
+    const bellCtx = new MockAudioContext()
+    const bellMaster = bellCtx.createGain()
+    pattern = setMelodyVoice(pattern, 'bells')
+    const bellSeq = new Sequencer({
+      engine: { ctx: asAudioContext(bellCtx), master: bellMaster as unknown as GainNode },
+      getArrangement: () => patternArrangement(pattern),
+    })
+    bellSeq.start()
+    // Bells are two sines, and nothing else is.
+    expect(bellCtx.oscillators.map((osc) => osc.type)).toEqual(['sine', 'sine'])
+    bellSeq.stop()
   })
 
   it('stays silent when the melody is muted', () => {

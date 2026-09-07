@@ -140,6 +140,18 @@ describe('migratePattern and the melody', () => {
     expect(migrated.melody.level).toBe(0.5)
   })
 
+  it('plays a beat saved before there was a choice with the lead', () => {
+    expect(withMelody({ notes: [] }).melody.voiceId).toBe('lead')
+  })
+
+  it('keeps the sound the beat was saved with', () => {
+    expect(withMelody({ voiceId: 'flute', notes: [] }).melody.voiceId).toBe('flute')
+  })
+
+  it('falls back to the lead for a sound this build does not have', () => {
+    expect(withMelody({ voiceId: 'theremin', notes: [] }).melody.voiceId).toBe('lead')
+  })
+
   it('drops a note at a pitch this build does not have', () => {
     const migrated = withMelody({ notes: [{ pitch: 99, start: 0, length: 1 }] })
     expect(migrated.melody.notes).toEqual([])

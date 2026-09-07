@@ -1,12 +1,13 @@
 import { VOICE_IDS, getVoice, type VoiceId } from '../audio/kit'
 import { STEPS_PER_MEASURE, clampBpm, stepCount } from '../audio/timing'
 import { isPitch } from '../audio/scale'
+import { DEFAULT_MELODY_VOICE, isMelodyVoiceId, type MelodyVoiceId } from '../audio/melodyKit'
 
 /**
  * The saved-pattern format. Every change here needs a bump to PATTERN_VERSION
  * and a migration, because these objects outlive the code that wrote them.
  */
-export const PATTERN_VERSION = 4
+export const PATTERN_VERSION = 5
 
 /**
  * 0 means the step is off. Anything above is the hit's velocity, so accents
@@ -40,12 +41,15 @@ export type Note = {
 export type Melody = {
   level: number
   muted: boolean
+  /** Which sound the notes are played with. Saved with the beat. */
+  voiceId: MelodyVoiceId
   notes: Note[]
 }
 
 export const MELODY_DEFAULTS: Omit<Melody, 'notes'> = {
   level: 0.6,
   muted: false,
+  voiceId: DEFAULT_MELODY_VOICE,
 }
 
 export type Pattern = {
@@ -333,6 +337,12 @@ export function removeNote(pattern: Pattern, id: string): Pattern {
 export function setMelodyLevel(pattern: Pattern, level: number): Pattern {
   const melody = { ...pattern.melody, level: Math.min(1, Math.max(0, level)) }
   return revise(pattern, { melody })
+}
+
+/** An id this build does not have is ignored, rather than silencing the beat. */
+export function setMelodyVoice(pattern: Pattern, voiceId: MelodyVoiceId): Pattern {
+  if (!isMelodyVoiceId(voiceId)) return pattern
+  return revise(pattern, { melody: { ...pattern.melody, voiceId } })
 }
 
 export function toggleMelodyMute(pattern: Pattern): Pattern {

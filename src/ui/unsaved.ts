@@ -24,6 +24,7 @@ function fingerprintPattern(pattern: Pattern): string {
     pattern.drumsMuted,
     pattern.melody.level,
     pattern.melody.muted,
+    pattern.melody.voiceId,
     [...pattern.melody.notes]
       .sort((a, b) => a.start - b.start || a.pitch - b.pitch)
       .map((note) => [note.pitch, note.start, note.length, note.velocity]),

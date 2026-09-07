@@ -7,6 +7,7 @@ import { resetTransport } from '../../state/transport'
 import { resetEngine, setContextFactory } from '../../audio/context'
 import { addNote, createEmptyPattern } from '../../state/schema'
 import { PITCH_COUNT, pitchName } from '../../audio/scale'
+import { MELODY_VOICE_IDS } from '../../audio/melodyKit'
 import { MockAudioContext, asAudioContext } from '../../test/mockAudioContext'
 
 let mock: MockAudioContext
@@ -418,6 +419,30 @@ describe('melody controls', () => {
 
     expect(usePatternStore.getState().pattern.melody.level).toBeCloseTo(0.15)
     expect(useSettingsStore.getState().melodyOpen).toBe(false)
+  })
+
+  it('picks the sound the melody is played with', () => {
+    render(<Grid />)
+    fireEvent.change(screen.getByLabelText('Melody sound'), { target: { value: 'bells' } })
+
+    expect(usePatternStore.getState().pattern.melody.voiceId).toBe('bells')
+  })
+
+  it('offers every sound in the kit, showing the one in use', () => {
+    render(<Grid />)
+    const picker = screen.getByLabelText<HTMLSelectElement>('Melody sound')
+
+    expect([...picker.options].map((option) => option.value)).toEqual(MELODY_VOICE_IDS)
+    expect(picker.value).toBe('lead')
+  })
+
+  // The sound is part of the beat, so it has to be reachable without
+  // unfolding the roll, exactly like the mute and the fader beside it.
+  it('keeps the picker reachable while the section is collapsed', () => {
+    useSettingsStore.setState({ melodyOpen: false })
+    render(<Grid />)
+
+    expect(screen.getByLabelText('Melody sound')).toBeInTheDocument()
   })
 
   it('mutes the melody', () => {

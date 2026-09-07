@@ -21,6 +21,7 @@ import {
   type SongRow,
 } from './song'
 import { isPitch } from '../audio/scale'
+import { DEFAULT_MELODY_VOICE, isMelodyVoiceId } from '../audio/melodyKit'
 import { STEPS_PER_MEASURE, clampBpm } from '../audio/timing'
 
 /**
@@ -123,6 +124,9 @@ function migrateMelody(value: unknown, length: number, version: number): Melody 
   return {
     level: Math.min(1, Math.max(0, asNumber(record.level, MELODY_DEFAULTS.level))),
     muted: record.muted === true,
+    // A beat saved before there was a choice of sound was written with the
+    // lead, and so is one naming a sound this build has never heard of.
+    voiceId: isMelodyVoiceId(record.voiceId) ? record.voiceId : DEFAULT_MELODY_VOICE,
     notes: migrateNotes(record.notes, length, pitchShiftFor(version)),
   }
 }

@@ -13,6 +13,13 @@ export class MockAudioParam {
   events: ParamEvent[] = []
   value = 0
 
+  /**
+   * A param is a connection target in Web Audio -- an LFO connects into one to
+   * modulate it. Nothing flows back out, so this stays empty and a walk over
+   * the graph stops here.
+   */
+  readonly outputs: MockAudioNode[] = []
+
   setValueAtTime(value: number, time: number): this {
     this.events.push({ method: 'setValueAtTime', value, time })
     this.value = value

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import * as edit from './schema'
 import type { Pattern } from './schema'
+import type { MelodyVoiceId } from '../audio/melodyKit'
 
 /**
  * Zustand rather than context+reducer for one specific reason: the scheduler
@@ -31,6 +32,7 @@ export type PatternStore = {
   updateNote: (id: string, draft: edit.NoteDraft) => void
   removeNote: (id: string) => void
   setMelodyLevel: (level: number) => void
+  setMelodyVoice: (voiceId: MelodyVoiceId) => void
   toggleMelodyMute: () => void
   rename: (name: string) => void
   setPlaying: (isPlaying: boolean) => void
@@ -59,6 +61,7 @@ export const usePatternStore = create<PatternStore>()((set) => ({
   updateNote: (id, draft) => set((s) => ({ pattern: edit.updateNote(s.pattern, id, draft) })),
   removeNote: (id) => set((s) => ({ pattern: edit.removeNote(s.pattern, id) })),
   setMelodyLevel: (level) => set((s) => ({ pattern: edit.setMelodyLevel(s.pattern, level) })),
+  setMelodyVoice: (voiceId) => set((s) => ({ pattern: edit.setMelodyVoice(s.pattern, voiceId) })),
   toggleMelodyMute: () => set((s) => ({ pattern: edit.toggleMelodyMute(s.pattern) })),
   rename: (name) => set((s) => ({ pattern: edit.renamePattern(s.pattern, name) })),
   setPlaying: (isPlaying) => set({ isPlaying }),

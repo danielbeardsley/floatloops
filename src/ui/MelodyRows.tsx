@@ -1,6 +1,7 @@
 import { usePatternStore } from '../state/patternStore'
 import { useSettingsStore } from '../state/settingsStore'
 import { PITCHES_TOP_DOWN, pitchName } from '../audio/scale'
+import { MELODY_KIT, type MelodyVoiceId } from '../audio/melodyKit'
 import { STEPS_PER_BEAT, STEPS_PER_MEASURE } from '../audio/timing'
 import { bridgesGap, cellFill, pitchColor } from './melodyCells'
 import type { NotePreview } from './noteEdits'
@@ -23,6 +24,7 @@ export function MelodyRows({
   const melody = usePatternStore((s) => s.pattern.melody)
   const toggleMelodyMute = usePatternStore((s) => s.toggleMelodyMute)
   const setMelodyLevel = usePatternStore((s) => s.setMelodyLevel)
+  const setMelodyVoice = usePatternStore((s) => s.setMelodyVoice)
   const open = useSettingsStore((s) => s.melodyOpen)
   const setMelodyOpen = useSettingsStore((s) => s.setMelodyOpen)
 
@@ -51,6 +53,20 @@ export function MelodyRows({
               playing when the section is collapsed, so its volume has to stay
               reachable, exactly like every drum track's does. */}
           <span className="section-head__controls">
+            {/* The sound is part of the beat, not a setting, so it sits with
+                the melody's other controls and is saved with it. */}
+            <select
+              className="section-head__voice"
+              value={melody.voiceId}
+              onChange={(e) => setMelodyVoice(e.target.value as MelodyVoiceId)}
+              aria-label="Melody sound"
+            >
+              {MELODY_KIT.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.name}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               className="row__mute"

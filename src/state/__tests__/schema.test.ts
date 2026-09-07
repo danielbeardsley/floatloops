@@ -16,6 +16,7 @@ import {
   removeMeasure,
   removeNote,
   setMelodyLevel,
+  setMelodyVoice,
   setMeasures,
   setPatternBpm,
   setStep,
@@ -314,6 +315,16 @@ describe('melody notes', () => {
     expect(sectionMuted.tracks[0].muted).toBe(true)
     expect(sectionMuted.tracks[1].muted).toBe(false)
     expect(toggleDrumsMute(sectionMuted).drumsMuted).toBe(false)
+  })
+
+  it('starts on the lead, which is what every beat was written with', () => {
+    expect(empty.melody.voiceId).toBe('lead')
+  })
+
+  it('swaps the melody sound, and ignores one it does not have', () => {
+    expect(setMelodyVoice(empty, 'bells').melody.voiceId).toBe('bells')
+    // @ts-expect-error deliberately invalid
+    expect(setMelodyVoice(empty, 'theremin').melody.voiceId).toBe('lead')
   })
 
   it('mutes and sets the melody level', () => {

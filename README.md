@@ -188,9 +188,17 @@ It shares the drums' scroll container rather than having one of its own. That is
 what keeps the columns aligned and lets the ruler, the add-measure button and the
 playhead apply to both halves without any syncing code.
 
-`lead` is the only voice that is *played* rather than struck: every drum decides
-its own length, while the lead is told how long to hold, so it has a real sustain
-and release. Any future pitched voice needs that same shape.
+The melody has its own kit, in `audio/melodyKit.ts`, and the header carries a
+picker for it: **Lead**, **Bells**, **Flute** and **Pluck**. The choice is saved
+with the beat rather than kept as a setting, so a beat sounds the same wherever
+it is played, including inside a song.
+
+Those voices are *played* rather than struck, which is what separates them from
+the drum kit: every drum decides its own length, while a melody voice is told
+how long to hold. What each does with that is its own business -- the lead and
+the flute sustain and release, the bells and the pluck ring on and die away --
+and the scheduler knows none of it, which is why adding a sound touches nothing
+outside its own file and the kit list.
 
 ## Gestures
 

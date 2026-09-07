@@ -1,6 +1,6 @@
 import type { Engine } from './context'
 import { getVoice } from './kit'
-import { lead } from './voices/lead'
+import { getMelodyVoice } from './melodyKit'
 import { pitchFreq } from './scale'
 import { secondsPerStep } from './timing'
 import type { Arrangement, Voicing } from '../state/arrangement'
@@ -199,12 +199,14 @@ export class Sequencer {
     const level = melodyLevel ?? pattern.melody.level
 
     // A note is triggered once, on the step it starts, and told how long to
-    // hold -- the sustain lives in the voice, not in the scheduler.
+    // hold -- the sustain lives in the voice, not in the scheduler, which is
+    // also why swapping the voice needs nothing else here.
+    const { trigger } = getMelodyVoice(pattern.melody.voiceId)
     const stepSeconds = secondsPerStep(this.bpm)
     for (const note of pattern.melody.notes) {
       if (note.start !== step) continue
 
-      lead(ctx, master, time, {
+      trigger(ctx, master, time, {
         freq: pitchFreq(note.pitch),
         duration: note.length * stepSeconds,
         level: level * note.velocity,
