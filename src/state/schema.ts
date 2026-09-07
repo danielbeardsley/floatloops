@@ -6,7 +6,7 @@ import { isPitch } from '../audio/scale'
  * The saved-pattern format. Every change here needs a bump to PATTERN_VERSION
  * and a migration, because these objects outlive the code that wrote them.
  */
-export const PATTERN_VERSION = 3
+export const PATTERN_VERSION = 4
 
 /**
  * 0 means the step is off. Anything above is the hit's velocity, so accents
@@ -54,6 +54,13 @@ export type Pattern = {
   bpm: number
   measures: number
   tracks: Track[]
+  /**
+   * Silences every drum at once, on top of whatever the individual tracks say.
+   * Kept separate from their own `muted` flags so unmuting the section gives
+   * back exactly the mix that was there before, rather than nine unmuted
+   * tracks.
+   */
+  drumsMuted: boolean
   melody: Melody
   version: number
   createdAt: number
@@ -86,6 +93,7 @@ export function createEmptyPattern(name = 'New Beat', measures = 1): Pattern {
       muted: false,
       steps: emptySteps(measures),
     })),
+    drumsMuted: false,
     melody: { ...MELODY_DEFAULTS, notes: [] },
     version: PATTERN_VERSION,
     createdAt: now,
@@ -143,6 +151,10 @@ export function setTrackLevel(pattern: Pattern, trackIndex: number, level: numbe
 
 export function toggleMute(pattern: Pattern, trackIndex: number): Pattern {
   return mapTrack(pattern, trackIndex, (track) => ({ ...track, muted: !track.muted }))
+}
+
+export function toggleDrumsMute(pattern: Pattern): Pattern {
+  return revise(pattern, { drumsMuted: !pattern.drumsMuted })
 }
 
 export function setPatternBpm(pattern: Pattern, bpm: number): Pattern {

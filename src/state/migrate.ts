@@ -144,6 +144,8 @@ export function migratePattern(raw: unknown): Pattern | null {
     bpm: clampBpm(asNumber(raw.bpm, 110)),
     measures,
     tracks: migrateTracks(raw.tracks, measures),
+    // Anything saved before the section mute existed was not muted.
+    drumsMuted: raw.drumsMuted === true,
     melody: migrateMelody(raw.melody, measures * STEPS_PER_MEASURE, version),
     version: PATTERN_VERSION,
     createdAt: asNumber(raw.createdAt, now),

@@ -102,6 +102,14 @@ describe('migratePattern repairs bad values', () => {
     expect(migrated.name).toBe('Untitled')
   })
 
+  it('leaves a pattern saved before the drum section mute unmuted', () => {
+    expect(migratePattern({ version: 3, tracks: [] })!.drumsMuted).toBe(false)
+  })
+
+  it('keeps the drum section muted when it was saved that way', () => {
+    expect(migratePattern({ ...createEmptyPattern(), drumsMuted: true })!.drumsMuted).toBe(true)
+  })
+
   it('stamps the current format version', () => {
     expect(migratePattern({ version: 0, tracks: [] })!.version).toBe(PATTERN_VERSION)
   })

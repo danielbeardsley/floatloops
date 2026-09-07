@@ -23,6 +23,7 @@ export type PatternStore = {
   setStep: (trackIndex: number, stepIndex: number, value: number) => void
   setBpm: (bpm: number) => void
   toggleMute: (trackIndex: number) => void
+  toggleDrumsMute: () => void
   setTrackLevel: (trackIndex: number, level: number) => void
   addMeasure: () => void
   removeMeasure: (measureIndex: number) => void
@@ -48,6 +49,7 @@ export const usePatternStore = create<PatternStore>()((set) => ({
     set((s) => ({ pattern: edit.setStep(s.pattern, trackIndex, stepIndex, value) })),
   setBpm: (bpm) => set((s) => ({ pattern: edit.setPatternBpm(s.pattern, bpm) })),
   toggleMute: (trackIndex) => set((s) => ({ pattern: edit.toggleMute(s.pattern, trackIndex) })),
+  toggleDrumsMute: () => set((s) => ({ pattern: edit.toggleDrumsMute(s.pattern) })),
   setTrackLevel: (trackIndex, level) =>
     set((s) => ({ pattern: edit.setTrackLevel(s.pattern, trackIndex, level) })),
   addMeasure: () => set((s) => ({ pattern: edit.addMeasure(s.pattern) })),

@@ -357,6 +357,23 @@ describe('the drums section', () => {
     expect(toggle()).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('mutes every drum from the section header', () => {
+    render(<Grid />)
+    fireEvent.click(screen.getByLabelText('Mute drums'))
+
+    expect(usePatternStore.getState().pattern.drumsMuted).toBe(true)
+    expect(screen.getByLabelText('Unmute drums')).toBeInTheDocument()
+  })
+
+  // The drums go on playing while the section is folded, so the control that
+  // stops them has to stay reachable, exactly as the melody's does.
+  it('keeps the mute reachable while the section is collapsed', () => {
+    render(<Grid />)
+    fireEvent.click(toggle())
+
+    expect(screen.getByLabelText('Mute drums')).toBeInTheDocument()
+  })
+
   it('leaves the ruler and the melody where they are', () => {
     useSettingsStore.setState({ melodyOpen: true })
     render(<Grid />)

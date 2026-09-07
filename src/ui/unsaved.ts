@@ -21,6 +21,7 @@ function fingerprintPattern(pattern: Pattern): string {
     pattern.bpm,
     pattern.measures,
     pattern.tracks.map((track) => [track.voiceId, track.level, track.muted, track.steps]),
+    pattern.drumsMuted,
     pattern.melody.level,
     pattern.melody.muted,
     [...pattern.melody.notes]

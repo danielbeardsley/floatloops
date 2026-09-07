@@ -20,6 +20,7 @@ import {
   setPatternBpm,
   setStep,
   setTrackLevel,
+  toggleDrumsMute,
   toggleMelodyMute,
   toggleMute,
   toggleStep,
@@ -302,6 +303,17 @@ describe('melody notes', () => {
 
     const single = addNote(empty, { pitch: 0, start: 2, length: 1 }).melody.notes[0]
     expect(noteRole(single, 2)).toBe('single')
+  })
+
+  it('mutes every drum at once without touching the tracks themselves', () => {
+    const oneMuted = toggleMute(empty, 0)
+    const sectionMuted = toggleDrumsMute(oneMuted)
+
+    expect(sectionMuted.drumsMuted).toBe(true)
+    // Unmuting the section has to give back the mix that was there before.
+    expect(sectionMuted.tracks[0].muted).toBe(true)
+    expect(sectionMuted.tracks[1].muted).toBe(false)
+    expect(toggleDrumsMute(sectionMuted).drumsMuted).toBe(false)
   })
 
   it('mutes and sets the melody level', () => {

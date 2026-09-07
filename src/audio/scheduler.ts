@@ -179,7 +179,8 @@ export class Sequencer {
     const { ctx, master } = this.engine
 
     for (const track of pattern.tracks) {
-      if (track.muted) continue
+      // The section mute silences every drum, whatever the tracks say themselves.
+      if (pattern.drumsMuted || track.muted) continue
 
       const velocity = track.steps[step] ?? 0
       if (velocity <= 0) continue

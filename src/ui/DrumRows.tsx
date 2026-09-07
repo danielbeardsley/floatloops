@@ -13,7 +13,9 @@ import { STEPS_PER_BEAT, STEPS_PER_MEASURE } from '../audio/timing'
  */
 export function DrumRows({ steps }: { steps: number }) {
   const tracks = usePatternStore((s) => s.pattern.tracks)
+  const drumsMuted = usePatternStore((s) => s.pattern.drumsMuted)
   const toggleMute = usePatternStore((s) => s.toggleMute)
+  const toggleDrumsMute = usePatternStore((s) => s.toggleDrumsMute)
   const setTrackLevel = usePatternStore((s) => s.setTrackLevel)
   const open = useSettingsStore((s) => s.drumsOpen)
   const setDrumsOpen = useSettingsStore((s) => s.setDrumsOpen)
@@ -39,6 +41,21 @@ export function DrumRows({ steps }: { steps: number }) {
               <span className="section-toggle__count">{inUse}</span>
             ) : null}
           </button>
+
+          {/* Shown folded or not, exactly as the melody's is: the drums keep
+              playing when the section is collapsed, so the one control that
+              stops them has to stay reachable. */}
+          <span className="section-head__controls">
+            <button
+              type="button"
+              className="row__mute"
+              onClick={toggleDrumsMute}
+              aria-pressed={drumsMuted}
+              aria-label={`${drumsMuted ? 'Unmute' : 'Mute'} drums`}
+            >
+              M
+            </button>
+          </span>
         </div>
       </div>
 
@@ -48,7 +65,7 @@ export function DrumRows({ steps }: { steps: number }) {
             return [
               <div
                 key={`${track.voiceId}-label`}
-                className={`row__label${track.muted ? ' row__label--muted' : ''}`}
+                className={`row__label${track.muted || drumsMuted ? ' row__label--muted' : ''}`}
                 style={{ ['--track-color' as string]: voice.color }}
               >
                 <span className="row__name">{voice.name}</span>

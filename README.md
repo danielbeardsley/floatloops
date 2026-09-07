@@ -173,13 +173,16 @@ are remembered per device.
 ## The melody
 
 Below the drums, a collapsible piano roll: fourteen pitches of A minor
-pentatonic, C3 up to G5, so no combination of notes can clash. Notes have a start and a length, snapped
-to the grid, which is why the melody is a list of `Note` objects rather than
-another grid of cells.
+pentatonic, C3 up to G5, so no combination of notes can clash. Notes have a
+start and a length, snapped to the grid, which is why the melody is a list of
+`Note` objects rather than another grid of cells.
 
 Its mute and volume sit in the section header and stay visible when the roll is
 collapsed -- the melody still plays either way, so its level has to stay
-reachable, exactly like a drum track's.
+reachable, exactly like a drum track's. The drums section header carries the
+same mute, for the same reason: it silences every drum at once without
+disturbing the individual tracks' own mutes, so unmuting gives back the mix
+that was there before.
 
 It shares the drums' scroll container rather than having one of its own. That is
 what keeps the columns aligned and lets the ruler, the add-measure button and the

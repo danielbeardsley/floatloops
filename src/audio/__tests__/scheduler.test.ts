@@ -170,6 +170,16 @@ describe('Sequencer', () => {
     seq.stop()
   })
 
+  it('stays silent when the drum section is muted, whatever the tracks say', () => {
+    pattern = { ...kickOnly([0, 1, 2, 3]), drumsMuted: true, bpm: BPM }
+    const seq = makeSequencer()
+    seq.start()
+    ctx.currentTime = 0.5
+    seq.tick()
+    expect(ctx.oscillators).toHaveLength(0)
+    seq.stop()
+  })
+
   it('stays silent on a muted track', () => {
     pattern = toggleMute(kickOnly([0, 1, 2, 3]), 0)
     pattern.bpm = BPM
@@ -341,6 +351,15 @@ describe('Sequencer and the melody', () => {
     slow.stop()
 
     expect(atHalfSpeed).toBeGreaterThan(atDefault)
+  })
+
+  it('leaves the melody alone when the drum section is muted', () => {
+    pattern = { ...setStep(noteOnly({ pitch: 0, start: 0, length: 2 }), 0, 0, 1), drumsMuted: true }
+    const seq = makeSequencer()
+    seq.start()
+    // The lead's two oscillators, and no kick.
+    expect(ctx.oscillators).toHaveLength(2)
+    seq.stop()
   })
 
   it('stays silent when the melody is muted', () => {
