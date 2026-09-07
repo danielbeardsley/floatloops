@@ -1,5 +1,6 @@
 import { bells } from './voices/bells'
 import { chorus } from './voices/chorus'
+import { deepBass } from './voices/deepBass'
 import { flute } from './voices/flute'
 import { lead } from './voices/lead'
 import { pluck } from './voices/pluck'
@@ -10,11 +11,11 @@ import { pluck } from './voices/pluck'
  * Every one of these is told a pitch *and* a length, which is what separates
  * them from the drum kit: a drum decides its own length, while a melody voice
  * has to hold a note for as long as the roll says. How each interprets that
- * length is its own business -- the lead, the flute and the chorus sustain,
- * the bells and the pluck ring on and die away.
+ * length is its own business -- the lead, the flute, the chorus and the deep
+ * bass sustain, the bells and the pluck ring on and die away.
  */
 
-export type MelodyVoiceId = 'lead' | 'bells' | 'flute' | 'pluck' | 'chorus'
+export type MelodyVoiceId = 'lead' | 'bells' | 'flute' | 'pluck' | 'chorus' | 'deepBass'
 
 export type MelodyNoteOptions = {
   freq?: number
@@ -46,6 +47,7 @@ export const MELODY_KIT: readonly MelodyVoiceDef[] = [
   { id: 'flute', name: 'Flute', trigger: flute },
   { id: 'pluck', name: 'Pluck', trigger: pluck },
   { id: 'chorus', name: 'Chorus', trigger: chorus },
+  { id: 'deepBass', name: 'Deep Bass', trigger: deepBass },
 ] as const
 
 export const MELODY_VOICE_IDS: readonly MelodyVoiceId[] = MELODY_KIT.map((voice) => voice.id)

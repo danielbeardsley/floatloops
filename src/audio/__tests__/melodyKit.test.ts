@@ -9,6 +9,7 @@ import {
 import { LEVEL_FLOOR } from '../voices/env'
 import { bells } from '../voices/bells'
 import { chorus, chorusEnvelopePoints } from '../voices/chorus'
+import { deepBass, deepBassEnvelopePoints } from '../voices/deepBass'
 import { fluteEnvelopePoints } from '../voices/flute'
 import {
   MockAudioContext,
@@ -199,9 +200,108 @@ describe('chorus', () => {
   })
 })
 
+describe('deep bass', () => {
+  const WHEN = 3
+  const HELD = 1
+
+  /** The one that sweeps. The other filter is the floor under the sawtooths. */
+  function lowpassOf(ctx: MockAudioContext) {
+    return ctx.filters.find((filter) => filter.type === 'lowpass')!
+  }
+
+  it('plays an octave below what the roll says, where a bassline lives', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220 })
+
+    // The roll's lowest note is a C3; a bass drawn along the bottom of it has
+    // to come out lower than that to be a bass at all.
+    for (const osc of ctx.oscillators) {
+      expect(osc.frequency.value).toBeLessThan(220)
+      expect(osc.frequency.value).toBeGreaterThan(100)
+    }
+  })
+
+  it('puts a sine on the note itself, with the sawtooths either side of it', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220 })
+
+    const sines = ctx.oscillators.filter((osc) => osc.type === 'sine')
+    const saws = ctx.oscillators.filter((osc) => osc.type === 'sawtooth')
+    expect(sines).toHaveLength(1)
+    expect(sines[0].frequency.value).toBe(110)
+    expect(saws).toHaveLength(2)
+
+    // Cents apart, so the pair beats against itself rather than sounding as a
+    // chord underneath the note.
+    const tenthOfASemitone = Math.pow(2, 10 / 1200)
+    const [up, down] = saws.map((osc) => osc.frequency.value).sort((a, b) => b - a)
+    expect(up / 110).toBeLessThan(tenthOfASemitone)
+    expect(110 / down).toBeLessThan(tenthOfASemitone)
+  })
+
+  // The weight of the voice. Sending it through the filters with everything
+  // else would trade the depth away to get the movement.
+  it('keeps the sine out of the filters, and the sawtooths in them', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220 })
+
+    for (const osc of ctx.oscillators) {
+      const filtered = ctx.filters.some((filter) => reaches(osc, filter))
+      expect(filtered).toBe(osc.type === 'sawtooth')
+      expect(reaches(osc, ctx.destination)).toBe(true)
+    }
+  })
+
+  // Otherwise the sawtooths double the sine down where it lives, and two
+  // things at the bottom is what makes a bass muddy rather than deep.
+  it('trims the sawtooths off below the note the roll was given', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220 })
+
+    const floor = ctx.filters.find((filter) => filter.type === 'highpass')!
+    expect(floor.frequency.events[0].value).toBeGreaterThanOrEqual(110)
+  })
+
+  it('closes the filter down towards the note, so it is not a held buzz', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220, duration: 1 })
+
+    const [opened, closed] = lowpassOf(ctx).frequency.events
+    expect(opened.value).toBeGreaterThan(closed.value)
+    // Above the note it is playing, or the note itself would be filtered out.
+    expect(closed.value).toBeGreaterThan(110)
+    expect(closed.time).toBeGreaterThan(opened.time)
+  })
+
+  // However long the note, the sweep is the same: a long note settles and
+  // stays settled rather than sagging all the way through.
+  it('closes over the same time whether the note is long or short', () => {
+    function sweep(duration: number): number {
+      const ctx = new MockAudioContext()
+      deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220, duration })
+      const [opened, closed] = lowpassOf(ctx).frequency.events
+      return closed.time - opened.time
+    }
+
+    expect(sweep(4)).toBeCloseTo(sweep(1))
+    // Except when the note is shorter than the sweep, which still gets to close.
+    expect(sweep(0.05)).toBeLessThan(sweep(1))
+  })
+
+  it('lets go of the note promptly, so one bass note does not run into the next', () => {
+    const points = deepBassEnvelopePoints(WHEN, 0.5, HELD)
+    const chorusPoints = chorusEnvelopePoints(WHEN, 0.5, HELD)
+
+    expect(points[2].time).toBe(WHEN + HELD)
+    const fell = points[3].time - (WHEN + HELD)
+    expect(fell).toBeLessThan(chorusPoints[3].time - (WHEN + HELD))
+    expect(fell).toBeGreaterThan(0)
+  })
+})
+
 describe('the melody kit', () => {
-  it('offers the lead plus four more', () => {
-    expect(MELODY_KIT).toHaveLength(5)
+  it('offers the lead plus five more', () => {
+    expect(MELODY_KIT).toHaveLength(6)
   })
 
   it('gives every voice a unique id and a name', () => {

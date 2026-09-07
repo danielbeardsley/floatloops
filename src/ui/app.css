@@ -602,7 +602,8 @@
    and the fader beside it stay where they are whichever sound is picked. */
 .section-head__voice {
   flex: none;
-  width: 78px;
+  /* Wide enough for the longest name in the kit, so none is cut off. */
+  width: 96px;
   height: 22px;
   padding: 0 4px;
   border-radius: 6px;
