@@ -3,6 +3,7 @@ import { confirmLeavingBeatForSong, confirmLeavingSongForLibrary } from './unsav
 import { SequencerScreen } from './SequencerScreen'
 import { SongScreen } from './SongScreen'
 import { LibraryScreen } from './LibraryScreen'
+import { RefreshButton } from './Refresh'
 import './app.css'
 
 /**
@@ -64,6 +65,7 @@ export function App() {
         <header className="app__bar">
           <h1 className="app__title">FloatLoops</h1>
           <Nav />
+          <RefreshButton />
         </header>
 
         <main className="app__main">

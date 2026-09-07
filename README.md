@@ -27,6 +27,7 @@ way to get standalone mode.
 | Sections fold rather than scroll | Nine drums plus fourteen pitches will not fit a tablet, and folding beats hunting. |
 | Separate library screen, not a side panel | Matches how the app is meant to be navigated. |
 | A song names its beats rather than copying them | One source of truth: fixing a beat fixes every song using it. |
+| A refresh button in the bar | It runs on a kiosk: no address bar to reload from. It asks first if anything is unsaved. |
 | React over Preact | Preact's bundle-size win is moot for a precached offline app. |
 
 ## Architecture

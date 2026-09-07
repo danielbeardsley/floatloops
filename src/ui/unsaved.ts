@@ -72,6 +72,39 @@ export function workingSongIsUnsaved(): boolean {
   return songIsUnsaved(song, saved)
 }
 
+/** The beat on screen, against the library's copy of it. */
+export function workingBeatIsUnsaved(): boolean {
+  const { pattern } = usePatternStore.getState()
+  return isUnsaved(pattern, useLibraryStore.getState().patternsById.get(pattern.id))
+}
+
+/**
+ * Asks before a reload throws away whatever is in memory.
+ *
+ * A reload is not a navigation, so it is the one case that has to look at both
+ * halves of the app at once: the beat and the arrangement are both held in
+ * memory, and both go, whichever screen the button was pressed on. Naming what
+ * is at stake matters more here than anywhere else, because the answer is not
+ * on screen -- the song is not visible from the beat, or the beat from the
+ * song.
+ */
+export function confirmRefresh(): boolean {
+  const atRisk: string[] = []
+  if (workingBeatIsUnsaved()) {
+    atRisk.push(`the beat "${usePatternStore.getState().pattern.name}"`)
+  }
+  if (workingSongIsUnsaved()) {
+    atRisk.push(`the song "${useSongStore.getState().song.name}"`)
+  }
+  if (atRisk.length === 0) return true
+
+  const what = atRisk.join(' and ')
+  return window.confirm(
+    `${what[0].toUpperCase()}${what.slice(1)} ${atRisk.length === 1 ? 'has' : 'have'} ` +
+      `changes you have not saved. Refreshing will discard them. Refresh anyway?`,
+  )
+}
+
 /**
  * Asks before leaving the song screen for the library. Unlike a beat, a song
  * is not merely out of date while it is unsaved -- the library is where it

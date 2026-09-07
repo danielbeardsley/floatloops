@@ -351,6 +351,26 @@
   color: var(--text);
 }
 
+/* Outlined rather than filled, and last: it belongs to the bar, but it is not
+   one of the places you can be. */
+.app__refresh {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 15px;
+  font-family: inherit;
+}
+
+.app__refresh-glyph {
+  font-size: 17px;
+  line-height: 1;
+}
+
 /* --- transport extras ---------------------------------------------------- */
 
 .transport__name {
