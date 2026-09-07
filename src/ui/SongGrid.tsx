@@ -208,186 +208,188 @@ export function SongGrid() {
         data-testid="song-grid"
         {...gestures}
       >
-        <div className="grid__content" style={{ ['--steps' as string]: song.bars }}>
-          <div className="grid__corner">
-            <button
-              type="button"
-              className={`follow${followPlayhead ? ' follow--on' : ''}`}
-              onClick={() => setFollowPlayhead(!followPlayhead)}
-              aria-pressed={followPlayhead}
-              title="Scroll the song to keep up with the playhead"
-            >
-              Follow
-            </button>
-          </div>
-
-          {columns.map((bar) => (
-            <div key={bar} className="ruler__measure ruler__measure--bar" data-measure={bar}>
+        <div className="grid__inner">
+          <div className="grid__content" style={{ ['--steps' as string]: song.bars }}>
+            <div className="grid__corner">
               <button
                 type="button"
-                className="ruler__jump"
-                onClick={() => scrollToBar(bar, false)}
-                aria-label={`Go to bar ${bar + 1}`}
+                className={`follow${followPlayhead ? ' follow--on' : ''}`}
+                onClick={() => setFollowPlayhead(!followPlayhead)}
+                aria-pressed={followPlayhead}
+                title="Scroll the song to keep up with the playhead"
               >
-                {bar + 1}
+                Follow
               </button>
-              {canRemoveBar(song) ? (
+            </div>
+
+            {columns.map((bar) => (
+              <div key={bar} className="ruler__measure ruler__measure--bar" data-measure={bar}>
                 <button
                   type="button"
-                  className="ruler__remove"
-                  onClick={() => onRemoveBar(bar)}
-                  aria-label={`Remove bar ${bar + 1}`}
-                  title={`Remove bar ${bar + 1}`}
+                  className="ruler__jump"
+                  onClick={() => scrollToBar(bar, false)}
+                  aria-label={`Go to bar ${bar + 1}`}
                 >
-                  &times;
+                  {bar + 1}
                 </button>
-              ) : null}
-            </div>
-          ))}
-
-          {song.rows.map((row, rowIndex) => {
-            const pattern = patternsById.get(row.patternId)
-            const name = pattern?.name ?? 'Missing beat'
-            const bars = pattern?.measures ?? 1
-            const color = rowColor(rowIndex)
-
-            return [
-              <div
-                key={`${row.id}-label`}
-                className={[
-                  'row__label',
-                  'row__label--song',
-                  row.muted ? 'row__label--muted' : '',
-                  pattern ? '' : 'row__label--missing',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                style={{ ['--track-color' as string]: color }}
-              >
-                <span className="row__top">
-                  <span className="row__name" title={name}>
-                    {name}
-                  </span>
-                  {/* How long the beat itself is, which is what decides where
-                      a block loops. Without it the seams have no explanation. */}
-                  {pattern ? (
-                    <span className="row__bars">
-                      {bars} {bars === 1 ? 'bar' : 'bars'}
-                    </span>
-                  ) : null}
-                </span>
-                <span className="row__controls">
+                {canRemoveBar(song) ? (
                   <button
                     type="button"
-                    className="row__mute"
-                    onClick={() => toggleRowMute(rowIndex)}
-                    aria-pressed={row.muted}
-                    aria-label={`${row.muted ? 'Unmute' : 'Mute'} ${name}`}
-                  >
-                    M
-                  </button>
-                  <input
-                    type="range"
-                    className="row__level"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={row.level}
-                    onChange={(e) => setRowLevel(rowIndex, Number(e.target.value))}
-                    aria-label={`${name} volume`}
-                  />
-                  <button
-                    type="button"
-                    className="row__action"
-                    onClick={() => onEditBeat(row.patternId)}
-                    disabled={!pattern}
-                    aria-label={`Edit ${name}`}
-                    title="Open this beat in the sequencer"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="row__action row__action--remove"
-                    onClick={() => removeRow(rowIndex)}
-                    aria-label={`Remove ${name} from the song`}
-                    title="Remove this row"
+                    className="ruler__remove"
+                    onClick={() => onRemoveBar(bar)}
+                    aria-label={`Remove bar ${bar + 1}`}
+                    title={`Remove bar ${bar + 1}`}
                   >
                     &times;
                   </button>
-                </span>
-              </div>,
-              ...columns.map((bar) => {
-                const fill = clipFill(row, rowIndex, bars, preview, bar)
-                const classes = [
-                  'cell',
-                  'clip',
-                  fill ? `note--${fill.role}` : '',
-                  fill ? 'clip--on' : '',
-                  fill?.draft ? 'note--draft' : '',
-                  fill?.cut ? 'clip--cut' : '',
-                  // The gap is bridged inside a pass and left open where the
-                  // beat starts again, so the repeats read as repeats.
-                  bridgesGap(fill) && !nextLoops(row, rowIndex, bars, preview, bar)
-                    ? 'note--bridge'
-                    : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')
+                ) : null}
+              </div>
+            ))}
 
-                return (
-                  <button
-                    key={`${row.id}-${bar}`}
-                    type="button"
-                    className={classes}
-                    data-row={rowIndex}
-                    data-step={bar}
-                    style={{ ['--note-color' as string]: color }}
-                    aria-label={describeCell(name, bar, fill)}
-                    aria-pressed={fill !== null}
-                    title={fill?.cut ? `${name} is cut short here` : undefined}
-                  >
-                    {/* The beat's own name is unreadable at this size, so the
-                        first cell says how many times it plays instead. */}
-                    {fill && fill.passes > 1 && (fill.role === 'start' || fill.role === 'single') ? (
-                      <span className="clip__bars" aria-hidden="true">
-                        &times;{fill.passes}
+            {song.rows.map((row, rowIndex) => {
+              const pattern = patternsById.get(row.patternId)
+              const name = pattern?.name ?? 'Missing beat'
+              const bars = pattern?.measures ?? 1
+              const color = rowColor(rowIndex)
+
+              return [
+                <div
+                  key={`${row.id}-label`}
+                  className={[
+                    'row__label',
+                    'row__label--song',
+                    row.muted ? 'row__label--muted' : '',
+                    pattern ? '' : 'row__label--missing',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  style={{ ['--track-color' as string]: color }}
+                >
+                  <span className="row__top">
+                    <span className="row__name" title={name}>
+                      {name}
+                    </span>
+                    {/* How long the beat itself is, which is what decides where
+                        a block loops. Without it the seams have no explanation. */}
+                    {pattern ? (
+                      <span className="row__bars">
+                        {bars} {bars === 1 ? 'bar' : 'bars'}
                       </span>
                     ) : null}
-                    <NoteGrips role={fill && !fill.draft ? fill.role : null} />
-                  </button>
-                )
-              }),
-            ]
-          })}
+                  </span>
+                  <span className="row__controls">
+                    <button
+                      type="button"
+                      className="row__mute"
+                      onClick={() => toggleRowMute(rowIndex)}
+                      aria-pressed={row.muted}
+                      aria-label={`${row.muted ? 'Unmute' : 'Mute'} ${name}`}
+                    >
+                      M
+                    </button>
+                    <input
+                      type="range"
+                      className="row__level"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={row.level}
+                      onChange={(e) => setRowLevel(rowIndex, Number(e.target.value))}
+                      aria-label={`${name} volume`}
+                    />
+                    <button
+                      type="button"
+                      className="row__action"
+                      onClick={() => onEditBeat(row.patternId)}
+                      disabled={!pattern}
+                      aria-label={`Edit ${name}`}
+                      title="Open this beat in the sequencer"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="row__action row__action--remove"
+                      onClick={() => removeRow(rowIndex)}
+                      aria-label={`Remove ${name} from the song`}
+                      title="Remove this row"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                </div>,
+                ...columns.map((bar) => {
+                  const fill = clipFill(row, rowIndex, bars, preview, bar)
+                  const classes = [
+                    'cell',
+                    'clip',
+                    fill ? `note--${fill.role}` : '',
+                    fill ? 'clip--on' : '',
+                    fill?.draft ? 'note--draft' : '',
+                    fill?.cut ? 'clip--cut' : '',
+                    // The gap is bridged inside a pass and left open where the
+                    // beat starts again, so the repeats read as repeats.
+                    bridgesGap(fill) && !nextLoops(row, rowIndex, bars, preview, bar)
+                      ? 'note--bridge'
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
 
-          <div className="song-add">
-            <div className="song-add__inner">
-              <button
-                type="button"
-                className="button button--primary"
-                onClick={() => setPicking(true)}
-                disabled={!canAddRow(song)}
-              >
-                + Add a beat
-              </button>
-              {canAddRow(song) ? null : (
-                <span className="song-add__note">That is as many beats as a song can hold.</span>
-              )}
+                  return (
+                    <button
+                      key={`${row.id}-${bar}`}
+                      type="button"
+                      className={classes}
+                      data-row={rowIndex}
+                      data-step={bar}
+                      style={{ ['--note-color' as string]: color }}
+                      aria-label={describeCell(name, bar, fill)}
+                      aria-pressed={fill !== null}
+                      title={fill?.cut ? `${name} is cut short here` : undefined}
+                    >
+                      {/* The beat's own name is unreadable at this size, so the
+                          first cell says how many times it plays instead. */}
+                      {fill && fill.passes > 1 && (fill.role === 'start' || fill.role === 'single') ? (
+                        <span className="clip__bars" aria-hidden="true">
+                          &times;{fill.passes}
+                        </span>
+                      ) : null}
+                      <NoteGrips role={fill && !fill.draft ? fill.role : null} />
+                    </button>
+                  )
+                }),
+              ]
+            })}
+
+            <div className="song-add">
+              <div className="song-add__inner">
+                <button
+                  type="button"
+                  className="button button--primary"
+                  onClick={() => setPicking(true)}
+                  disabled={!canAddRow(song)}
+                >
+                  + Add a beat
+                </button>
+                {canAddRow(song) ? null : (
+                  <span className="song-add__note">That is as many beats as a song can hold.</span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        <button
-          type="button"
-          className="grid__add"
-          onClick={addBar}
-          disabled={!canAddBar(song)}
-          aria-label="Add a bar"
-          title="Add a bar"
-        >
-          +
-        </button>
+          <button
+            type="button"
+            className="grid__add"
+            onClick={addBar}
+            disabled={!canAddBar(song)}
+            aria-label="Add a bar"
+            title="Add a bar"
+          >
+            +
+          </button>
+        </div>
       </div>
 
       {picking ? <BeatPicker onClose={() => setPicking(false)} /> : null}

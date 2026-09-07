@@ -100,7 +100,6 @@
   min-height: 0;
   display: flex;
   align-items: start;
-  gap: var(--gap);
   padding: var(--gap);
   overflow-x: auto;
   overflow-y: auto;
@@ -113,6 +112,20 @@
    */
   touch-action: pan-x pan-y;
   overscroll-behavior-x: contain;
+}
+
+/*
+ * The scrolled row of grid-plus-add-button. The button stretches to this
+ * element rather than to .grid, which is only ever one screenful tall: a
+ * stretch against the scroller would leave the button short of the bottom
+ * as soon as the rows overflowed. Kept at least a screenful so a short
+ * grid still gets a full-height button.
+ */
+.grid__inner {
+  display: flex;
+  align-items: start;
+  gap: var(--gap);
+  min-height: 100%;
 }
 
 .grid__content {

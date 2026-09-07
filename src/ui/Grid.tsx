@@ -219,57 +219,59 @@ export function Grid() {
     // once captured, events stop reaching descendants, so handlers on an inner
     // node would never fire again after the gesture started.
     <div className="grid" ref={scroller} data-testid="grid" {...gestures}>
-      <div className="grid__content" style={{ ['--steps' as string]: steps }}>
-        <div className="grid__corner">
-          <button
-            type="button"
-            className={`follow${followPlayhead ? ' follow--on' : ''}`}
-            onClick={() => setFollowPlayhead(!followPlayhead)}
-            aria-pressed={followPlayhead}
-            title="Scroll the grid to keep up with the beat"
-          >
-            Follow
-          </button>
-        </div>
-        {measures.map((measure) => (
-          <div key={measure} className="ruler__measure" data-measure={measure}>
+      <div className="grid__inner">
+        <div className="grid__content" style={{ ['--steps' as string]: steps }}>
+          <div className="grid__corner">
             <button
               type="button"
-              className="ruler__jump"
-              onClick={() => scrollToMeasure(measure)}
-              aria-label={`Go to measure ${measure + 1}`}
+              className={`follow${followPlayhead ? ' follow--on' : ''}`}
+              onClick={() => setFollowPlayhead(!followPlayhead)}
+              aria-pressed={followPlayhead}
+              title="Scroll the grid to keep up with the beat"
             >
-              {measure + 1}
+              Follow
             </button>
-            {canRemoveMeasure(pattern) ? (
+          </div>
+          {measures.map((measure) => (
+            <div key={measure} className="ruler__measure" data-measure={measure}>
               <button
                 type="button"
-                className="ruler__remove"
-                onClick={() => onRemoveMeasure(measure)}
-                aria-label={`Remove measure ${measure + 1}`}
-                title={`Remove measure ${measure + 1}`}
+                className="ruler__jump"
+                onClick={() => scrollToMeasure(measure)}
+                aria-label={`Go to measure ${measure + 1}`}
               >
-                &times;
+                {measure + 1}
               </button>
-            ) : null}
-          </div>
-        ))}
+              {canRemoveMeasure(pattern) ? (
+                <button
+                  type="button"
+                  className="ruler__remove"
+                  onClick={() => onRemoveMeasure(measure)}
+                  aria-label={`Remove measure ${measure + 1}`}
+                  title={`Remove measure ${measure + 1}`}
+                >
+                  &times;
+                </button>
+              ) : null}
+            </div>
+          ))}
 
-        <DrumRows steps={steps} />
+          <DrumRows steps={steps} />
 
-        <MelodyRows steps={steps} preview={preview} />
+          <MelodyRows steps={steps} preview={preview} />
+        </div>
+
+        <button
+          type="button"
+          className="grid__add"
+          onClick={addMeasure}
+          disabled={!canAddMeasure(pattern)}
+          aria-label="Add a measure"
+          title="Add a measure"
+        >
+          +
+        </button>
       </div>
-
-      <button
-        type="button"
-        className="grid__add"
-        onClick={addMeasure}
-        disabled={!canAddMeasure(pattern)}
-        aria-label="Add a measure"
-        title="Add a measure"
-      >
-        +
-      </button>
     </div>
   )
 }
