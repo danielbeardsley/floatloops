@@ -89,7 +89,7 @@ export function Grid() {
     // Always a single step, however long the note is. The point is to hear
     // which pitch it is, not to sit through a held note before drawing the
     // next one.
-    void auditionNote(shape.pitch, secondsPerStep(bpm), melody.level)
+    void auditionNote(melody.voiceId, shape.pitch, secondsPerStep(bpm), melody.level)
   }, [])
 
   const editor = useNoteEditor({

@@ -326,6 +326,18 @@ describe('hearing a note as it is placed', () => {
     expect(mock.oscillators).toHaveLength(2)
   })
 
+  // The whole point of the audition is hearing what you just drew, so it has
+  // to be the sound the beat is set to rather than whatever came first.
+  it('plays it with the sound the melody is set to', async () => {
+    render(<Grid />)
+    fireEvent.change(screen.getByLabelText('Melody sound'), { target: { value: 'bells' } })
+    draw(3, 2, 2)
+    await settle()
+
+    // Bells are two sines; the lead would be a sawtooth over a square.
+    expect(mock.oscillators.map((osc) => osc.type)).toEqual(['sine', 'sine'])
+  })
+
   it('plays a short version however long the note is', async () => {
     render(<Grid />)
     draw(3, 2, 6)
