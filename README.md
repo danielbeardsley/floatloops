@@ -189,14 +189,15 @@ what keeps the columns aligned and lets the ruler, the add-measure button and th
 playhead apply to both halves without any syncing code.
 
 The melody has its own kit, in `audio/melodyKit.ts`, and the header carries a
-picker for it: **Lead**, **Bells**, **Flute** and **Pluck**. The choice is saved
+picker for it: **Lead**, **Bells**, **Flute**, **Pluck** and **Chorus**. The choice is saved
 with the beat rather than kept as a setting, so a beat sounds the same wherever
 it is played, including inside a song.
 
 Those voices are *played* rather than struck, which is what separates them from
 the drum kit: every drum decides its own length, while a melody voice is told
-how long to hold. What each does with that is its own business -- the lead and
-the flute sustain and release, the bells and the pluck ring on and die away --
+how long to hold. What each does with that is its own business -- the lead, the
+flute and the chorus sustain and release, the bells and the pluck ring on and
+die away --
 and the scheduler knows none of it, which is why adding a sound touches nothing
 outside its own file and the kit list.
 

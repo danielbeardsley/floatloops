@@ -8,6 +8,8 @@ import {
 } from '../melodyKit'
 import { LEVEL_FLOOR } from '../voices/env'
 import { bells } from '../voices/bells'
+import { chorus, chorusEnvelopePoints } from '../voices/chorus'
+import { fluteEnvelopePoints } from '../voices/flute'
 import {
   MockAudioContext,
   MockAudioNode,
@@ -144,9 +146,48 @@ describe('bells', () => {
   })
 })
 
+describe('chorus', () => {
+  const WHEN = 2
+  const HELD = 1
+  const points = chorusEnvelopePoints(WHEN, 0.5, HELD)
+
+  it('builds slowly -- more slowly than any other voice here', () => {
+    const built = points[1].time - WHEN
+    const flute = fluteEnvelopePoints(WHEN, 0.5, HELD)[1].time - WHEN
+
+    expect(built).toBeGreaterThan(flute)
+  })
+
+  it('holds full level until the note is let go of', () => {
+    expect(points[2].time).toBe(WHEN + HELD)
+    expect(points[2].value).toBe(points[1].value)
+  })
+
+  it('falls away well after the note ends, without eating into it', () => {
+    const fell = points[3].time - (WHEN + HELD)
+    expect(fell).toBeGreaterThan(0.2)
+    expect(fell).toBeLessThan(1)
+  })
+
+  it('detunes two voices around one that is dead in tune', () => {
+    const ctx = new MockAudioContext()
+    chorus(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 440 })
+
+    const [middle, up, down] = ctx.oscillators.map((osc) => osc.frequency.value)
+    expect(middle).toBe(440)
+    expect(up).toBeGreaterThan(440)
+    expect(down).toBeLessThan(440)
+    // Cents apart, not a different note: a tenth of a semitone at the very
+    // most, or the three would be heard as a chord rather than as one note.
+    const tenthOfASemitone = Math.pow(2, 10 / 1200)
+    expect(up / 440).toBeLessThan(tenthOfASemitone)
+    expect(440 / down).toBeLessThan(tenthOfASemitone)
+  })
+})
+
 describe('the melody kit', () => {
-  it('offers the lead plus three more', () => {
-    expect(MELODY_KIT).toHaveLength(4)
+  it('offers the lead plus four more', () => {
+    expect(MELODY_KIT).toHaveLength(5)
   })
 
   it('gives every voice a unique id and a name', () => {
