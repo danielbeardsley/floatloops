@@ -24,6 +24,14 @@ export const BELLS_DEFAULTS: Required<BellsOptions> = {
   level: 0.4,
 }
 
+/**
+ * Bells sound like bells an octave above where the roll puts them: down in the
+ * scale's own register the two partials beat against each other into mud. The
+ * whole range is lifted rather than just the bottom of it, so a melody written
+ * with another sound keeps its shape when it is switched to this one.
+ */
+const OCTAVE_UP = 2
+
 const PARTIAL = 2.76
 /** How loud the partial rings against the fundamental. */
 const PARTIAL_LEVEL = 0.45
@@ -60,9 +68,11 @@ export function bells(
   percussiveEnvelope(amp.gain, when, p.level, ring, ATTACK)
   amp.connect(destination)
 
+  const root = p.freq * OCTAVE_UP
+
   const osc = ctx.createOscillator()
   osc.type = 'sine'
-  osc.frequency.setValueAtTime(p.freq, when)
+  osc.frequency.setValueAtTime(root, when)
   osc.connect(amp)
   osc.start(when)
   osc.stop(stopAt)
@@ -71,7 +81,7 @@ export function bells(
   // fundamental does -- holding both for the same time sounds like a siren.
   const partial = ctx.createOscillator()
   partial.type = 'sine'
-  partial.frequency.setValueAtTime(p.freq * PARTIAL, when)
+  partial.frequency.setValueAtTime(root * PARTIAL, when)
   const partialGain = ctx.createGain()
   percussiveEnvelope(partialGain.gain, when, PARTIAL_LEVEL, ring * 0.55, ATTACK)
   partial.connect(partialGain).connect(amp)

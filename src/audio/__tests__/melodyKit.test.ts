@@ -7,6 +7,7 @@ import {
   isMelodyVoiceId,
 } from '../melodyKit'
 import { LEVEL_FLOOR } from '../voices/env'
+import { bells } from '../voices/bells'
 import {
   MockAudioContext,
   MockAudioNode,
@@ -92,9 +93,13 @@ describe('every melody voice', () => {
         )
       })
 
-      it('plays the pitch it was given', () => {
+      // Which octave is the voice's own business -- the lead puts a sub below
+      // the note, the bells ring above it -- but it plays the note it was
+      // handed, not some other one.
+      it('plays the pitch it was given, in one octave or another', () => {
         const played = trigger({ freq: 330 }).oscillators.map((osc) => osc.frequency.value)
-        expect(played.some((freq) => freq === 330 || freq === 165)).toBe(true)
+        const octaves = [0.25, 0.5, 1, 2, 4].map((ratio) => 330 * ratio)
+        expect(played.some((freq) => octaves.includes(freq))).toBe(true)
       })
 
       it('is louder when asked for a louder note', () => {
@@ -126,6 +131,17 @@ describe('every melody voice', () => {
       })
     })
   }
+})
+
+describe('bells', () => {
+  it('rings an octave above the note it was given, where a bell sounds like one', () => {
+    const ctx = new MockAudioContext()
+    bells(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220 })
+
+    expect(ctx.oscillators[0].frequency.value).toBe(440)
+    // The partial is inharmonic, and moves with the fundamental.
+    expect(ctx.oscillators[1].frequency.value).toBeCloseTo(440 * 2.76)
+  })
 })
 
 describe('the melody kit', () => {
