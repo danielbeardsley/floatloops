@@ -230,6 +230,23 @@ describe('measures', () => {
     expect(screen.getByLabelText('Go to measure 12')).toBeInTheDocument()
   })
 
+  // What a long beat costs to show is what fits on the screen. The grid is
+  // still as wide as the whole beat -- the columns that are not drawn are
+  // held open rather than dropped -- but only the ones in view are built.
+  it('draws what is in view rather than every bar of a long beat', () => {
+    render(<Grid />)
+    const add = screen.getByLabelText('Add a measure')
+
+    for (let i = 1; i < 4; i += 1) fireEvent.click(add)
+    const drawn = document.querySelectorAll('.cell').length
+
+    for (let i = 4; i < 24; i += 1) fireEvent.click(add)
+    expect(usePatternStore.getState().pattern.measures).toBe(24)
+    expect(document.querySelectorAll('.cell')).toHaveLength(drawn)
+
+    const content = document.querySelector<HTMLElement>('.grid__content')!
+    expect(content.style.getPropertyValue('--steps')).toBe(String(24 * STEPS_PER_MEASURE))
+  })
 })
 
 describe('removing a measure', () => {

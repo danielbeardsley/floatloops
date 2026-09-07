@@ -20,6 +20,7 @@ import { planFollow } from './followPlayhead'
 import { usePlayhead } from './usePlayhead'
 import { useStepPainter, type StepTarget } from './useStepPainter'
 import { useTwoFingerPan } from './useTwoFingerPan'
+import { useVisibleSteps } from './useVisibleSteps'
 
 /** Width of the sticky track column. Keep in step with --label-w in app.css. */
 const LABEL_WIDTH = 150
@@ -36,6 +37,12 @@ export function Grid() {
   const setFollowPlayhead = useSettingsStore((s) => s.setFollowPlayhead)
 
   const steps = totalSteps(pattern)
+
+  // A beat has no length limit, so the rows draw the columns in view rather
+  // than all of them. The ruler is left whole: it is one element a measure
+  // rather than two dozen a column, and keeping it means every measure marker
+  // is there to be scrolled to, including the one the playhead is under.
+  const shown = useVisibleSteps(scroller, steps, LABEL_WIDTH)
 
   // Reading through getState keeps these callbacks stable, so the painter is
   // not rebuilt on every edit.
@@ -256,9 +263,9 @@ export function Grid() {
             </div>
           ))}
 
-          <DrumRows steps={steps} />
+          <DrumRows steps={steps} shown={shown} />
 
-          <MelodyRows steps={steps} preview={preview} />
+          <MelodyRows steps={steps} shown={shown} preview={preview} />
         </div>
 
         <button

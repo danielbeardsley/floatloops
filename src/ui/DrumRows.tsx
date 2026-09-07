@@ -2,6 +2,8 @@ import { usePatternStore } from '../state/patternStore'
 import { useSettingsStore } from '../state/settingsStore'
 import { getVoice } from '../audio/kit'
 import { STEPS_PER_BEAT, STEPS_PER_MEASURE } from '../audio/timing'
+import { GridGap } from './GridGap'
+import type { StepWindow } from './visibleSteps'
 
 /**
  * The drum half of the grid, folded away by the same header the piano roll
@@ -10,8 +12,11 @@ import { STEPS_PER_BEAT, STEPS_PER_MEASURE } from '../audio/timing'
  * Collapsing is only ever visual: the drums go on playing, which is why the
  * header says how many of them are in use rather than leaving a silent gap
  * where nine rows were.
+ *
+ * Only the steps in `shown` are drawn; the rest of the beat is held open by a
+ * gap at either end. See visibleSteps.
  */
-export function DrumRows({ steps }: { steps: number }) {
+export function DrumRows({ steps, shown }: { steps: number; shown: StepWindow }) {
   const tracks = usePatternStore((s) => s.pattern.tracks)
   const drumsMuted = usePatternStore((s) => s.pattern.drumsMuted)
   const toggleMute = usePatternStore((s) => s.toggleMute)
@@ -20,7 +25,7 @@ export function DrumRows({ steps }: { steps: number }) {
   const open = useSettingsStore((s) => s.drumsOpen)
   const setDrumsOpen = useSettingsStore((s) => s.setDrumsOpen)
 
-  const stepIndices = Array.from({ length: steps }, (_, i) => i)
+  const stepIndices = Array.from({ length: shown.to - shown.from }, (_, i) => shown.from + i)
   const inUse = tracks.filter((track) => track.steps.some((step) => step > 0)).length
 
   return (
@@ -91,6 +96,7 @@ export function DrumRows({ steps }: { steps: number }) {
                   />
                 </span>
               </div>,
+              <GridGap key={`${track.voiceId}-before`} span={shown.from} />,
               ...stepIndices.map((stepIndex) => {
                 const velocity = track.steps[stepIndex] ?? 0
                 const classes = [
@@ -118,6 +124,7 @@ export function DrumRows({ steps }: { steps: number }) {
                   />
                 )
               }),
+              <GridGap key={`${track.voiceId}-after`} span={steps - shown.to} />,
             ]
           })
         : null}

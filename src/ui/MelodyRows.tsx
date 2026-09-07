@@ -6,6 +6,8 @@ import { STEPS_PER_BEAT, STEPS_PER_MEASURE } from '../audio/timing'
 import { bridgesGap, cellFill, pitchColor } from './melodyCells'
 import type { NotePreview } from './noteEdits'
 import { NoteGrips } from './NoteGrips'
+import { GridGap } from './GridGap'
+import type { StepWindow } from './visibleSteps'
 
 /**
  * The piano roll, rendered as more rows of the same grid the drums live in.
@@ -13,12 +15,17 @@ import { NoteGrips } from './NoteGrips'
  * Sharing one grid rather than building a second one is what keeps the columns
  * lined up, the ruler and the add-measure button applicable to both, and the
  * playhead sweeping across the whole thing for free.
+ *
+ * Only the steps in `shown` are drawn, exactly as the drums do it, and for
+ * the same reason. See visibleSteps.
  */
 export function MelodyRows({
   steps,
+  shown,
   preview,
 }: {
   steps: number
+  shown: StepWindow
   preview: NotePreview | null
 }) {
   const melody = usePatternStore((s) => s.pattern.melody)
@@ -28,7 +35,7 @@ export function MelodyRows({
   const open = useSettingsStore((s) => s.melodyOpen)
   const setMelodyOpen = useSettingsStore((s) => s.setMelodyOpen)
 
-  const stepIndices = Array.from({ length: steps }, (_, i) => i)
+  const stepIndices = Array.from({ length: shown.to - shown.from }, (_, i) => shown.from + i)
 
   return (
     <>
@@ -99,6 +106,7 @@ export function MelodyRows({
             >
               <span className="row__name">{pitchName(pitch)}</span>
             </div>,
+            <GridGap key={`pitch-${pitch}-before`} span={shown.from} />,
             ...stepIndices.map((step) => {
               const fill = cellFill(melody, preview, pitch, step)
               const classes = [
@@ -129,6 +137,7 @@ export function MelodyRows({
                 </button>
               )
             }),
+            <GridGap key={`pitch-${pitch}-after`} span={steps - shown.to} />,
           ])
         : null}
     </>
