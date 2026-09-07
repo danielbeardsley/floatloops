@@ -2,7 +2,7 @@ import { LEVEL_FLOOR, TAIL, clamp, cleanupAfter } from './env'
 
 /**
  * Chorus: three of the same note, very slightly out of tune with each other,
- * swelling in and falling away.
+ * over an octave below, swelling in and falling away.
  *
  * The detuning is the sound. Three oscillators in perfect tune are just one
  * louder oscillator; a few cents apart they drift in and out of phase, and
@@ -10,9 +10,14 @@ import { LEVEL_FLOOR, TAIL, clamp, cleanupAfter } from './env'
  * actually is. A slow wander on top keeps it from settling into a fixed
  * interference pattern, which would read as a machine rather than a choir.
  *
- * It builds slowly and falls away over a good while after the note ends,
- * which makes it the voice for holding long notes under everything else --
- * short notes barely arrive before they are leaving again.
+ * Sawtooths rather than something purer, because the beating is between the
+ * harmonics as much as between the notes: the more of them there are, the
+ * fuller the same three voices sound. The octave underneath gives the whole
+ * thing a floor to stand on.
+ *
+ * It builds slowly and takes a long time to go once the note ends, which
+ * makes it the voice for holding long notes under everything else -- short
+ * notes barely arrive before they are leaving again.
  */
 
 export type ChorusOptions = {
@@ -30,21 +35,27 @@ export const CHORUS_DEFAULTS: Required<ChorusOptions> = {
 
 /** The slow build. By far the longest attack of any voice here. */
 const ATTACK = 0.18
-/** The fall at the end: long enough to hear, short of a wash. */
-const RELEASE = 0.35
+/** The fall at the end. Long: this voice should be heard letting go. */
+const RELEASE = 0.85
 
 /** How far apart the outer two voices sit, in cents. */
 const DETUNE_CENTS = 7
-/** How loud each of the three sits in the blend. */
-const VOICE_MIX = 0.4
+/** How loud each voice sits in the blend. Low, because there are four. */
+const VOICE_MIX = 0.3
+
+/** The octave below, against the three. Felt more than heard. */
+const SUB_LEVEL = 0.5
 
 /** The wander: slow enough to be felt rather than heard as a wobble. */
 const DRIFT_HZ = 0.22
 /** Its depth, as a fraction of the note's own pitch. */
 const DRIFT_DEPTH = 0.0025
 
-/** How far above the note the triangles' edge is trimmed off. */
-const BRIGHTNESS = 4
+/**
+ * How far above the note the sawtooths are trimmed off. Higher than the
+ * flute's, since the harmonics up there are the point of the sawtooth.
+ */
+const BRIGHTNESS = 6
 const FILTER_Q = 0.6
 const MAX_HZ = 16000
 
@@ -128,13 +139,24 @@ export function chorus(
   const detunes = [1, cents(DETUNE_CENTS), cents(-DETUNE_CENTS)]
   const voices = detunes.map((ratio) => {
     const osc = ctx.createOscillator()
-    osc.type = 'triangle'
+    osc.type = 'sawtooth'
     osc.frequency.setValueAtTime(p.freq * ratio, when)
     osc.connect(mix)
     osc.start(when)
     osc.stop(stopAt)
     return osc
   })
+
+  // A triangle rather than a fourth sawtooth: the octave is there for weight,
+  // and its harmonics would only crowd the ones above it.
+  const sub = ctx.createOscillator()
+  sub.type = 'triangle'
+  sub.frequency.setValueAtTime(p.freq / 2, when)
+  const subGain = ctx.createGain()
+  subGain.gain.value = SUB_LEVEL
+  sub.connect(subGain).connect(mix)
+  sub.start(when)
+  sub.stop(stopAt)
 
   // One drift shared by the outer pair, pushing them in opposite directions --
   // the same wander applied to both would move them together and cancel out.
@@ -152,5 +174,5 @@ export function chorus(
     return depth
   })
 
-  cleanupAfter(voices[0], [...voices, drift, ...depths, mix, filter, amp])
+  cleanupAfter(voices[0], [...voices, sub, subGain, drift, ...depths, mix, filter, amp])
 }

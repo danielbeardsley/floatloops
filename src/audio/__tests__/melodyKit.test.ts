@@ -163,17 +163,17 @@ describe('chorus', () => {
     expect(points[2].value).toBe(points[1].value)
   })
 
-  it('falls away well after the note ends, without eating into it', () => {
+  it('takes the best part of a second to go, without eating into the note', () => {
     const fell = points[3].time - (WHEN + HELD)
-    expect(fell).toBeGreaterThan(0.2)
-    expect(fell).toBeLessThan(1)
+    expect(fell).toBeGreaterThan(0.5)
+    expect(fell).toBeLessThan(1.5)
   })
 
   it('detunes two voices around one that is dead in tune', () => {
     const ctx = new MockAudioContext()
     chorus(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 440 })
 
-    const [middle, up, down] = ctx.oscillators.map((osc) => osc.frequency.value)
+    const [middle, up, down, sub] = ctx.oscillators.map((osc) => osc.frequency.value)
     expect(middle).toBe(440)
     expect(up).toBeGreaterThan(440)
     expect(down).toBeLessThan(440)
@@ -182,6 +182,20 @@ describe('chorus', () => {
     const tenthOfASemitone = Math.pow(2, 10 / 1200)
     expect(up / 440).toBeLessThan(tenthOfASemitone)
     expect(440 / down).toBeLessThan(tenthOfASemitone)
+
+    // The fourth voice is the octave underneath, which is a different matter.
+    expect(sub).toBe(220)
+  })
+
+  it('is fuller than one oscillator: four voices, most of them sawtooths', () => {
+    const ctx = new MockAudioContext()
+    chorus(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 440 })
+
+    const types = ctx.oscillators.map((osc) => osc.type)
+    expect(types.filter((type) => type === 'sawtooth')).toHaveLength(3)
+    // The octave below, and the drift that moves the detuned pair.
+    expect(types.filter((type) => type === 'triangle')).toHaveLength(1)
+    expect(types.filter((type) => type === 'sine')).toHaveLength(1)
   })
 })
 
