@@ -1,6 +1,6 @@
 import { VOICE_IDS, getVoice } from '../audio/kit'
 import {
-  MAX_MEASURES,
+  MEASURE_LIMIT,
   MELODY_DEFAULTS,
   PATTERN_VERSION,
   createId,
@@ -139,7 +139,7 @@ export function migratePattern(raw: unknown): Pattern | null {
   const version = asNumber(raw.version, 0)
   if (version > PATTERN_VERSION) return null
 
-  const measures = Math.min(MAX_MEASURES, Math.max(1, Math.floor(asNumber(raw.measures, 1))))
+  const measures = Math.min(MEASURE_LIMIT, Math.max(1, Math.floor(asNumber(raw.measures, 1))))
   const now = Date.now()
 
   return {

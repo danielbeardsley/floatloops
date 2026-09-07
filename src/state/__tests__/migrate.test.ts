@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { migratePattern } from '../migrate'
-import { PATTERN_VERSION, createEmptyPattern, demoPattern, isStepOn } from '../schema'
+import { MEASURE_LIMIT, PATTERN_VERSION, createEmptyPattern, demoPattern, isStepOn } from '../schema'
 import { pitchName } from '../../audio/scale'
 import { KIT, VOICE_IDS } from '../../audio/kit'
 import { STEPS_PER_MEASURE } from '../../audio/timing'
@@ -83,17 +83,28 @@ describe('migratePattern repairs bad values', () => {
     expect(withTrack(['x', null, Number.NaN]).tracks[0].steps.slice(0, 3)).toEqual([0, 0, 0])
   })
 
-  it('clamps velocity, level, tempo and measures into range', () => {
+  it('clamps velocity, level and tempo into range', () => {
     const migrated = migratePattern({
       ...createEmptyPattern(),
       bpm: 100000,
-      measures: 999,
       tracks: [{ voiceId: 'kick', level: 12, muted: false, steps: [7] }],
     })!
     expect(migrated.bpm).toBeLessThanOrEqual(240)
-    expect(migrated.measures).toBeLessThanOrEqual(8)
     expect(migrated.tracks[0].level).toBe(1)
     expect(migrated.tracks[0].steps[0]).toBe(1)
+  })
+
+  // Length is the one thing here with no range to be in: a long beat is a
+  // long beat, and only a number nothing could have written is refused.
+  it('keeps a beat as long as it was saved', () => {
+    const migrated = migratePattern({ ...createEmptyPattern(), measures: 999 })!
+    expect(migrated.measures).toBe(999)
+    expect(migrated.tracks[0].steps).toHaveLength(999 * STEPS_PER_MEASURE)
+  })
+
+  it('refuses a length that would allocate until the tab died', () => {
+    const migrated = migratePattern({ ...createEmptyPattern(), measures: 1e9 })!
+    expect(migrated.measures).toBe(MEASURE_LIMIT)
   })
 
   it('invents an id and a name when they are missing', () => {

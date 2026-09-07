@@ -72,8 +72,20 @@ export type Pattern = {
 }
 
 export const DEFAULT_BPM = 110
-export const MAX_MEASURES = 8
 export const FULL_VELOCITY = 1
+
+/**
+ * Not a musical limit -- a beat is as long as it needs to be, and nothing
+ * here cares how many bars that is. This is the point past which a
+ * `measures` read back off disk is taken to be corrupt rather than made,
+ * since every track is allocated a step per sixteenth of it and a nonsense
+ * number would allocate until the tab died.
+ *
+ * It applies to the editor as well as to loading, so that a beat that can be
+ * built is always a beat that can be saved and opened again. Well beyond
+ * anything anyone will reach by tapping a button once per bar.
+ */
+export const MEASURE_LIMIT = 1024
 
 export function createId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
@@ -174,7 +186,8 @@ export function renamePattern(pattern: Pattern, name: string): Pattern {
  * destructive, so callers are expected to confirm first.
  */
 export function setMeasures(pattern: Pattern, measures: number): Pattern {
-  const next = Math.min(MAX_MEASURES, Math.max(1, Math.floor(measures)))
+  if (!Number.isFinite(measures)) return pattern
+  const next = Math.min(MEASURE_LIMIT, Math.max(1, Math.floor(measures)))
   if (next === pattern.measures) return pattern
 
   const length = next * STEPS_PER_MEASURE
@@ -196,7 +209,7 @@ export function addMeasure(pattern: Pattern): Pattern {
 }
 
 export function canAddMeasure(pattern: Pattern): boolean {
-  return pattern.measures < MAX_MEASURES
+  return pattern.measures < MEASURE_LIMIT
 }
 
 /**

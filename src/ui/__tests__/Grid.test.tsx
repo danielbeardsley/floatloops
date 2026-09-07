@@ -5,7 +5,7 @@ import { readTarget } from '../useStepPainter'
 import { usePatternStore } from '../../state/patternStore'
 import { resetTransport } from '../../state/transport'
 import { resetEngine, setContextFactory } from '../../audio/context'
-import { MAX_MEASURES, createEmptyPattern, demoPattern, isStepOn } from '../../state/schema'
+import { createEmptyPattern, demoPattern, isStepOn } from '../../state/schema'
 import { loadPreferences } from '../../state/preferences'
 import { STEPS_PER_MEASURE } from '../../audio/timing'
 import { KIT } from '../../audio/kit'
@@ -218,13 +218,18 @@ describe('measures', () => {
     expect(isStepOn(usePatternStore.getState().pattern.tracks[0], 3)).toBe(true)
   })
 
-  it('stops offering more once the cap is reached', () => {
+  // It used to stop offering at eight, which is not long enough to write a
+  // song in.
+  it('keeps offering more past the eight bars it used to stop at', () => {
     render(<Grid />)
     const add = screen.getByLabelText('Add a measure')
-    for (let i = 1; i < MAX_MEASURES; i += 1) fireEvent.click(add)
-    expect(usePatternStore.getState().pattern.measures).toBe(MAX_MEASURES)
-    expect(add).toBeDisabled()
+    for (let i = 1; i < 12; i += 1) fireEvent.click(add)
+
+    expect(usePatternStore.getState().pattern.measures).toBe(12)
+    expect(add).not.toBeDisabled()
+    expect(screen.getByLabelText('Go to measure 12')).toBeInTheDocument()
   })
+
 })
 
 describe('removing a measure', () => {

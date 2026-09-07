@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  MAX_MEASURES,
+  MEASURE_LIMIT,
   PATTERN_VERSION,
   addMeasure,
   addNote,
@@ -128,11 +128,31 @@ describe('measures', () => {
     expect(one.tracks[0].steps).toHaveLength(STEPS_PER_MEASURE)
   })
 
-  it('refuses to grow past the cap', () => {
+  // A beat is as long as the person writing it wants it to be. It used to
+  // stop at eight bars, which is a verse and a chorus short of a song.
+  it('keeps growing well past the eight bars it used to stop at', () => {
     let pattern = createEmptyPattern()
-    for (let i = 0; i < MAX_MEASURES + 3; i += 1) pattern = addMeasure(pattern)
-    expect(pattern.measures).toBe(MAX_MEASURES)
-    expect(canAddMeasure(pattern)).toBe(false)
+    for (let i = 0; i < 40; i += 1) pattern = addMeasure(pattern)
+
+    expect(pattern.measures).toBe(41)
+    expect(pattern.tracks[0].steps).toHaveLength(41 * STEPS_PER_MEASURE)
+    expect(canAddMeasure(pattern)).toBe(true)
+  })
+
+  // The one number left is not a musical limit: it is where a beat read back
+  // off disk is corrupt rather than long, and the editor honours it too so
+  // that anything that can be built can be saved and opened again.
+  it('stops at the point where a length is nonsense rather than long', () => {
+    const huge = setMeasures(createEmptyPattern(), MEASURE_LIMIT * 4)
+    expect(huge.measures).toBe(MEASURE_LIMIT)
+    expect(canAddMeasure(huge)).toBe(false)
+    expect(addMeasure(huge)).toBe(huge)
+  })
+
+  it('ignores a length that is not a number at all', () => {
+    const pattern = createEmptyPattern()
+    expect(setMeasures(pattern, Number.NaN)).toBe(pattern)
+    expect(setMeasures(pattern, Number.POSITIVE_INFINITY)).toBe(pattern)
   })
 
   it('never shrinks below one measure', () => {
