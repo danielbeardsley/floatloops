@@ -1,33 +1,43 @@
 import { LEVEL_FLOOR, TAIL, clamp, cleanupAfter } from './env'
 
 /**
- * Deep Bass: a club bassline. One sawtooth an octave under the note, behind a
- * resonant lowpass that opens for an instant and then shuts down onto the
- * fundamental, driven through a soft clip.
+ * Deep Bass: a growling club bassline. A sine an octave under the note, bent
+ * by a second sine, driven through a soft clip.
  *
  * The octave down is what makes it a bass at all: the roll's lowest note is
  * only a C3, which is where a tune lives rather than where a bassline does.
  * Everything written on the roll comes out an octave below what the labels
  * say, so a line drawn along the bottom lands where a house bass belongs.
  *
- * The filter sweep is most of the sound. A sawtooth is all harmonics, and left
- * alone at this pitch it is a buzz; dropping the cutoff from well above the
- * note to just above it, quickly, throws away that buzz but keeps the moment
- * of it at the front of every note. That moment is the punch, and it is also
- * what a tablet speaker can actually reproduce -- the fundamental down here is
- * felt more than heard. The resonance is what makes the drop sing rather than
- * merely happen.
+ * The harmonics are *made* here rather than filtered out of a sawtooth, which
+ * is the whole difference between this and an ordinary synth bass. A second
+ * oscillator -- heard by nothing, connected only to the first one's pitch --
+ * pushes that pitch up and down thousands of times a second. Too fast to hear
+ * as a wobble, it is heard instead as new tones above the note, and how far it
+ * pushes decides how many. So the brightness has its own envelope: a hard bite
+ * at the front of every note that settles back within a tenth of a second,
+ * which a filter sweep can only imitate by taking harmonics away.
  *
- * The sweep runs over a fixed time rather than over the note's own length, so
- * a long note settles and stays settled instead of sagging all the way
- * through.
+ * What that buys is a bass that stays audible on a tablet. A filtered
+ * sawtooth's harmonics are only ever what survived the filter, so a deep
+ * setting leaves almost nothing up where a small speaker works. These
+ * harmonics are generated at whatever strength the note needs, with the
+ * fundamental underneath left as a clean sine for anything that can reproduce
+ * it.
  *
- * Then it is driven through a soft clip, which is where the dirt comes from.
- * The saturation sits *after* the filter rather than before it, which is the
- * whole trick: it makes new harmonics out of whatever the filter left behind,
- * so a note stays gritty after the cutoff has shut, instead of the sweep
- * taking the grit away with it. Clipping also flattens the peaks, which is
- * what lets the voice sound big without the level to match.
+ * The modulator sits an octave above the carrier, so everything it makes falls
+ * on the note's own harmonic series: hollow and square-ish rather than
+ * clangorous. Push the ratio off a whole number and it turns to bell metal,
+ * which is worth hearing once on the bench and is not a bassline.
+ *
+ * On top of that a slow wobble moves the brightness a few times a second. It
+ * starts fresh with each note rather than running underneath the music, so it
+ * reads as the way this bass speaks rather than as an effect wandering in and
+ * out of time with the beat.
+ *
+ * Last comes a soft clip for grit and a lowpass to keep the sidebands from
+ * fizzing -- fixed, not swept: with the bite where it is, a moving filter
+ * would only be a second opinion about the same moment.
  *
  * Every number behind all of that is in DEEP_BASS_TUNING, and a caller may
  * pass a `tuning` of its own to override any of them. Nothing in the app does
@@ -53,25 +63,44 @@ export type DeepBassTuning = {
   decay: number
   /** Short: house basslines stop between notes, which is where the groove is. */
   release: number
-  /** Where the lowpass starts, as a multiple of the pitch being played. */
-  open: number
-  /** And where it ends. Under about 1 and the note itself is filtered away. */
-  closed: number
-  /** How long it takes to close, whatever the note's own length. */
-  sweep: number
-  /** Resonance. Enough to sing as it closes, well short of self-oscillating. */
+  /**
+   * Where the modulator sits, as a multiple of the pitch. Whole numbers give
+   * harmonics of the note; anything between them gives tones that belong to no
+   * note at all, which is a bell rather than a bass.
+   */
+  ratio: number
+  /**
+   * How hard the note is bent as it lands, in modulation index -- roughly, how
+   * many harmonics the bite reaches up to. This is the attack of the sound.
+   *
+   * Not a knob that turns evenly: how much of the note is left at its own
+   * pitch rises and falls as this goes up, and there is a hole around 4 where
+   * almost none of it is. The bench finds these in a few seconds and they are
+   * why the settings below are the numbers they are.
+   */
+  growl: number
+  /** And what it settles back to, which is the timbre of the held note. */
+  body: number
+  /** How long the bite takes to fall back to the body. */
+  bite: number
+  /** The wobble under the brightness, in wobbles per second. */
+  wobble: number
+  /** How far it moves, as a fraction of the body. 0 holds the note still. */
+  wobbleDepth: number
+  /** Lid on the sidebands, as a multiple of the pitch. Low is dull, not deep. */
+  tone: number
+  /** Resonance at that lid. A little sharpens the top of the growl. */
   q: number
   /**
    * How hard the signal is pushed into the clip. Higher is dirtier: 1 is
-   * barely bent, and past about 6 it is a square with a pitch rather than a
-   * bass.
+   * barely bent, and past about 6 the note is a square with a pitch.
    */
   drive: number
   /**
-   * How loud the voice runs for a given level. Under 1 because a sawtooth this
-   * low carries far more energy than the same level up where the lead sits,
-   * and lower again than an unclipped one would need: squaring off the peaks
-   * raises how loud the note reads without raising the peak itself.
+   * How loud the voice runs for a given level. Under 1 because a bass note
+   * carries far more energy than the same level up where the lead sits, and
+   * lower again than a clean one would need: squaring off the peaks raises how
+   * loud the note reads without raising the peak itself.
    */
   level: number
 }
@@ -81,12 +110,16 @@ export const DEEP_BASS_TUNING: DeepBassTuning = {
   attack: 0.01,
   decay: 3.4,
   release: 0.06,
-  open: 9,
-  closed: 1.6,
-  sweep: 0.15,
-  q: 4,
-  drive: 4,
-  level: 0.45,
+  ratio: 2,
+  growl: 5,
+  body: 1.4,
+  bite: 0.12,
+  wobble: 5.5,
+  wobbleDepth: 0.3,
+  tone: 9,
+  q: 1,
+  drive: 3,
+  level: 0.4,
 }
 
 export type DeepBassOptions = {
@@ -111,17 +144,24 @@ const MAX_HZ = 16000
 
 export function resolveDeepBassTuning(tuning: Partial<DeepBassTuning> = {}): DeepBassTuning {
   const t = { ...DEEP_BASS_TUNING, ...tuning }
+  const d = DEEP_BASS_TUNING
   return {
-    octave: clamp(t.octave, 0.125, 2, DEEP_BASS_TUNING.octave),
-    attack: clamp(t.attack, 0.001, 0.5, DEEP_BASS_TUNING.attack),
-    decay: clamp(t.decay, 0.05, 20, DEEP_BASS_TUNING.decay),
-    release: clamp(t.release, 0.01, 2, DEEP_BASS_TUNING.release),
-    open: clamp(t.open, 1, 64, DEEP_BASS_TUNING.open),
-    closed: clamp(t.closed, 0.5, 64, DEEP_BASS_TUNING.closed),
-    sweep: clamp(t.sweep, 0.005, 2, DEEP_BASS_TUNING.sweep),
-    q: clamp(t.q, 0.0001, 20, DEEP_BASS_TUNING.q),
-    drive: clamp(t.drive, 0.01, 20, DEEP_BASS_TUNING.drive),
-    level: clamp(t.level, 0, 1, DEEP_BASS_TUNING.level),
+    octave: clamp(t.octave, 0.125, 2, d.octave),
+    attack: clamp(t.attack, 0.001, 0.5, d.attack),
+    decay: clamp(t.decay, 0.05, 20, d.decay),
+    release: clamp(t.release, 0.01, 2, d.release),
+    ratio: clamp(t.ratio, 0.25, 12, d.ratio),
+    growl: clamp(t.growl, 0.01, 24, d.growl),
+    // Never zero: the bite falls to it along an exponential ramp, which cannot
+    // reach nothing, and a held note with no harmonics at all is a test tone.
+    body: clamp(t.body, 0.01, 24, d.body),
+    bite: clamp(t.bite, 0.005, 2, d.bite),
+    wobble: clamp(t.wobble, 0, 40, d.wobble),
+    wobbleDepth: clamp(t.wobbleDepth, 0, 2, d.wobbleDepth),
+    tone: clamp(t.tone, 1, 64, d.tone),
+    q: clamp(t.q, 0.0001, 20, d.q),
+    drive: clamp(t.drive, 0.01, 20, d.drive),
+    level: clamp(t.level, 0, 1, d.level),
   }
 }
 
@@ -130,6 +170,13 @@ export function resolveDeepBassTuning(tuning: Partial<DeepBassTuning> = {}): Dee
  * the wave towards flat while leaving the quiet parts nearly alone, so the
  * note gains harmonics rather than simply being chopped. Normalised by its own
  * ceiling, so turning the drive up adds dirt without adding volume.
+ *
+ * Symmetric, which means it can only ever add odd harmonics -- with the
+ * modulator an octave up, which is also odd-only, the note has no octave in it
+ * at all. A lopsided curve would put one there, and the bench says it is not
+ * worth having: sliding the bend off centre by a third cost a third of the
+ * fundamental and left a DC offset behind to buy a second harmonic a
+ * twentieth the size of the note. The hollow, odd-harmonic bass is the sound.
  */
 export function saturationCurve(drive: number): Float32Array<ArrayBuffer> {
   const curve = new Float32Array(CURVE_POINTS)
@@ -207,6 +254,16 @@ export function deepBassEnvelopePoints(
   ]
 }
 
+/**
+ * How far the modulator pushes the carrier's pitch, in Hz, for a given index.
+ * The index is the musical number -- it says how far up the harmonics reach,
+ * whatever the note -- and this is what a Web Audio gain has to be set to in
+ * order to deliver it.
+ */
+export function deviationHz(index: number, modulatorHz: number): number {
+  return index * modulatorHz
+}
+
 export function deepBass(
   ctx: BaseAudioContext,
   destination: AudioNode,
@@ -226,31 +283,71 @@ export function deepBass(
   }
   amp.connect(destination)
 
-  const filter = ctx.createBiquadFilter()
-  filter.type = 'lowpass'
-  filter.Q.setValueAtTime(t.q, when)
-  filter.frequency.setValueAtTime(Math.min(freq * t.open, MAX_HZ), when)
-  // Never longer than the note itself, so a short one still gets to close.
-  filter.frequency.exponentialRampToValueAtTime(
-    Math.min(freq * t.closed, MAX_HZ),
-    when + Math.min(t.sweep, p.duration),
-  )
+  // Fixed, not swept. It is here to stop the top of the growl fizzing, and the
+  // note's movement is already accounted for by the bite.
+  const lid = ctx.createBiquadFilter()
+  lid.type = 'lowpass'
+  lid.Q.setValueAtTime(t.q, when)
+  lid.frequency.setValueAtTime(Math.min(freq * t.tone, MAX_HZ), when)
+  lid.connect(amp)
 
-  // Post-filter, so the grit outlives the sweep. 4x oversampling because a
-  // clipped sawtooth makes harmonics well past where the samples can carry
-  // them, and without it those fold back down as a whistle over the note.
   const dirt = ctx.createWaveShaper()
   dirt.curve = curveFor(t.drive)
+  // A clipped, modulated sine reaches well past where the samples can carry
+  // it, and without this those harmonics fold back down as a whistle.
   dirt.oversample = '4x'
-  dirt.connect(amp)
-  filter.connect(dirt)
+  dirt.connect(lid)
 
-  const osc = ctx.createOscillator()
-  osc.type = 'sawtooth'
-  osc.frequency.setValueAtTime(freq, when)
-  osc.connect(filter)
-  osc.start(when)
-  osc.stop(stopAt)
+  const carrier = ctx.createOscillator()
+  carrier.type = 'sine'
+  carrier.frequency.setValueAtTime(freq, when)
+  carrier.connect(dirt)
+  carrier.start(when)
+  carrier.stop(stopAt)
 
-  cleanupAfter(osc, [osc, filter, dirt, amp])
+  const modulatorHz = freq * t.ratio
+
+  /*
+   * The bite. This gain is what the modulation index actually is: the
+   * modulator leaves it at full scale, and how much of it arrives at the
+   * carrier's pitch is the whole timbre of the note.
+   */
+  const index = ctx.createGain()
+  index.gain.setValueAtTime(deviationHz(t.growl, modulatorHz), when)
+  index.gain.exponentialRampToValueAtTime(
+    deviationHz(t.body, modulatorHz),
+    // Never longer than the note itself, so a short one still gets to settle.
+    when + Math.min(t.bite, p.duration),
+  )
+  index.connect(carrier.frequency)
+
+  const modulator = ctx.createOscillator()
+  modulator.type = 'sine'
+  modulator.frequency.setValueAtTime(modulatorHz, when)
+  modulator.connect(index)
+  modulator.start(when)
+  modulator.stop(stopAt)
+
+  // The wobble rides on top of whatever the bite is doing: an audio-rate
+  // param sums what is scheduled on it with what is connected into it, so
+  // these two are heard as one line moving rather than as two effects.
+  const wobble = ctx.createOscillator()
+  wobble.type = 'sine'
+  wobble.frequency.setValueAtTime(t.wobble, when)
+  const wobbleDepth = ctx.createGain()
+  wobbleDepth.gain.value = deviationHz(t.body * t.wobbleDepth, modulatorHz)
+  wobble.connect(wobbleDepth).connect(index.gain)
+  wobble.start(when)
+  wobble.stop(stopAt)
+
+  cleanupAfter(carrier, [
+    carrier,
+    modulator,
+    index,
+    wobble,
+    wobbleDepth,
+    dirt,
+    lid,
+    amp,
+  ])
 }

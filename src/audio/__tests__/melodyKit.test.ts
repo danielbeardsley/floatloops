@@ -9,7 +9,7 @@ import {
 import { LEVEL_FLOOR } from '../voices/env'
 import { bells } from '../voices/bells'
 import { chorus, chorusEnvelopePoints } from '../voices/chorus'
-import { deepBass, deepBassEnvelopePoints } from '../voices/deepBass'
+import { deepBass, deepBassEnvelopePoints, deviationHz } from '../voices/deepBass'
 import { fluteEnvelopePoints } from '../voices/flute'
 import {
   MockAudioContext,
@@ -204,8 +204,21 @@ describe('deep bass', () => {
   const WHEN = 3
   const HELD = 1
 
-  function lowpassOf(ctx: MockAudioContext) {
-    return ctx.filters.find((filter) => filter.type === 'lowpass')!
+  /**
+   * The three oscillators, told apart by what they are for: only the carrier
+   * is heard, and nothing musical sits below 40Hz, so the slow one is the
+   * wobble and whatever is left is the modulator.
+   */
+  function partsOf(ctx: MockAudioContext) {
+    const carrier = ctx.oscillators.find((osc) => reaches(osc, ctx.destination))!
+    const wobble = ctx.oscillators.find((osc) => osc.frequency.value < 40)!
+    const modulator = ctx.oscillators.find((osc) => osc !== carrier && osc !== wobble)!
+    return { carrier, modulator, wobble }
+  }
+
+  /** The gain the modulator passes through: scheduled, and aimed at a param. */
+  function indexOf(ctx: MockAudioContext) {
+    return ctx.gains.find((gain) => gain.gain.events.length > 0 && modulates(gain))!
   }
 
   it('plays an octave below what the roll says, where a bassline lives', () => {
@@ -214,72 +227,96 @@ describe('deep bass', () => {
 
     // The roll's lowest note is a C3; a bass drawn along the bottom of it has
     // to come out lower than that to be a bass at all.
-    for (const osc of ctx.oscillators) {
-      expect(osc.frequency.value).toBeLessThan(220)
-      expect(osc.frequency.value).toBeGreaterThan(100)
-    }
+    expect(partsOf(ctx).carrier.frequency.value).toBe(110)
   })
 
-  // One raw sawtooth is the whole source; everything that makes it a bass
-  // rather than a buzz happens in the filter it plays through.
-  it('is a single sawtooth, and all of it goes through the filter', () => {
+  // The whole difference between this and an ordinary synth bass: the note is
+  // a plain sine, and its harmonics are made by bending it rather than by
+  // filtering them out of something richer.
+  it('makes its harmonics by bending a sine, not by filtering one', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220 })
+    const { carrier, modulator } = partsOf(ctx)
+
+    expect(carrier.type).toBe('sine')
+    expect(modulator.type).toBe('sine')
+    // The modulator is heard by nothing. It only moves the carrier's pitch.
+    expect(reaches(modulator, ctx.destination)).toBe(false)
+    expect(indexOf(ctx).outputs).toContain(carrier.frequency)
+  })
+
+  // On a harmonic of the note, so the tones it makes belong to the note. Off a
+  // whole number they belong to no note at all, which is a bell, not a bass.
+  it('puts the modulator on a harmonic of the note', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220 })
+    const { carrier, modulator } = partsOf(ctx)
+
+    const ratio = modulator.frequency.value / carrier.frequency.value
+    expect(ratio).toBe(Math.round(ratio))
+  })
+
+  // The bite: bright as the note lands, settling back within a tenth of a
+  // second. This is the movement a filter sweep used to be responsible for.
+  it('bites hard and settles back, well inside the note', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220, duration: 1 })
+
+    const [bit, settled] = indexOf(ctx).gain.events
+    expect(bit.value).toBeGreaterThan(settled.value)
+    expect(settled.value).toBeGreaterThan(0)
+    expect(settled.time - bit.time).toBeLessThan(0.25)
+  })
+
+  it('settles inside a short note too, rather than being cut off mid-bite', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220, duration: 0.05 })
+
+    const [, settled] = indexOf(ctx).gain.events
+    expect(settled.time).toBeLessThanOrEqual(0.05)
+  })
+
+  // A wobble on the volume would be tremolo, which is a different sound and a
+  // much less interesting one: this one moves how bright the note is.
+  it('wobbles the brightness rather than the volume', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220 })
+    const { wobble } = partsOf(ctx)
+
+    expect(reaches(wobble, ctx.destination)).toBe(false)
+    const depth = ctx.gains.find((gain) => gain.gain.events.length === 0 && modulates(gain))!
+    expect(depth.outputs).toContain(indexOf(ctx).gain)
+  })
+
+  // Slow enough to hear as movement. Faster than about 30 and it stops being a
+  // wobble and becomes more harmonics, which is the modulator's job.
+  it('wobbles slowly enough to be heard as movement', () => {
     const ctx = new MockAudioContext()
     deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220 })
 
-    expect(ctx.oscillators).toHaveLength(1)
-    expect(ctx.oscillators[0].type).toBe('sawtooth')
-    expect(ctx.oscillators[0].frequency.value).toBe(110)
-    expect(reaches(ctx.oscillators[0], lowpassOf(ctx))).toBe(true)
+    const { wobble } = partsOf(ctx)
+    expect(wobble.frequency.value).toBeGreaterThan(0)
+    expect(wobble.frequency.value).toBeLessThan(30)
   })
 
-  it('closes the filter down towards the note, so it is not a held buzz', () => {
+  // A lid on the sidebands, not a sweep: with the bite doing the moving, a
+  // filter envelope would only be a second opinion about the same moment.
+  it('holds the filter still, above the note', () => {
     const ctx = new MockAudioContext()
     deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220, duration: 1 })
 
-    const [opened, closed] = lowpassOf(ctx).frequency.events
-    expect(opened.value).toBeGreaterThan(closed.value)
-    // Above the note it is playing, or the note itself would be filtered out.
-    expect(closed.value).toBeGreaterThan(110)
-    expect(closed.time).toBeGreaterThan(opened.time)
+    const lid = ctx.filters.find((filter) => filter.type === 'lowpass')!
+    expect(lid.frequency.events).toHaveLength(1)
+    expect(lid.frequency.events[0].value).toBeGreaterThan(110)
   })
 
-  // The drop is what the ear hears as the note landing, so it has to happen
-  // while the note is still arriving rather than somewhere in the middle of it.
-  it('closes quickly, and with enough resonance to sing on the way down', () => {
-    const ctx = new MockAudioContext()
-    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220, duration: 1 })
-
-    const [opened, closed] = lowpassOf(ctx).frequency.events
-    expect(closed.time - opened.time).toBeLessThan(0.25)
-    expect(lowpassOf(ctx).Q.value).toBeGreaterThan(1)
-  })
-
-  // However long the note, the sweep is the same: a long note settles and
-  // stays settled rather than sagging all the way through.
-  it('closes over the same time whether the note is long or short', () => {
-    function sweep(duration: number): number {
-      const ctx = new MockAudioContext()
-      deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220, duration })
-      const [opened, closed] = lowpassOf(ctx).frequency.events
-      return closed.time - opened.time
-    }
-
-    expect(sweep(4)).toBeCloseTo(sweep(1))
-    // Except when the note is shorter than the sweep, which still gets to close.
-    expect(sweep(0.05)).toBeLessThan(sweep(1))
-  })
-
-  // The dirt is made from what the filter leaves behind, so it has to come
-  // after the sweep -- ahead of it, the closing cutoff would take the grit
-  // straight back off again.
-  it('drives the note through a soft clip after the filter, not before it', () => {
+  it('drives the note through a soft clip on its way to the filter', () => {
     const ctx = new MockAudioContext()
     deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220 })
 
     expect(ctx.waveShapers).toHaveLength(1)
     const [dirt] = ctx.waveShapers
-    expect(reaches(lowpassOf(ctx), dirt)).toBe(true)
-    expect(reaches(dirt, lowpassOf(ctx))).toBe(false)
+    expect(reaches(partsOf(ctx).carrier, dirt)).toBe(true)
     expect(reaches(dirt, ctx.destination)).toBe(true)
   })
 
@@ -300,23 +337,6 @@ describe('deep bass', () => {
     expect(quarter).toBeGreaterThan(0.5)
   })
 
-  // Every number the voice is made of comes from the tuning, which is what
-  // lets the bench at lab/deep-bass.html turn them while a riff is playing.
-  it('takes its numbers from the tuning it is handed', () => {
-    const ctx = new MockAudioContext()
-    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, {
-      freq: 220,
-      duration: 1,
-      tuning: { octave: 1, open: 20, closed: 2, q: 9 },
-    })
-
-    expect(ctx.oscillators[0].frequency.value).toBe(220)
-    const [opened, closed] = lowpassOf(ctx).frequency.events
-    expect(opened.value).toBe(220 * 20)
-    expect(closed.value).toBe(220 * 2)
-    expect(lowpassOf(ctx).Q.value).toBe(9)
-  })
-
   it('makes a dirtier curve when the drive is turned up', () => {
     function curveAt(drive: number): Float32Array {
       const ctx = new MockAudioContext()
@@ -329,6 +349,32 @@ describe('deep bass', () => {
     const at = (curve: Float32Array) => curve[Math.floor(curve.length * 0.75)]
     expect(at(curveAt(8))).toBeGreaterThan(at(curveAt(4)))
     expect(at(curveAt(4))).toBeGreaterThan(at(curveAt(0.5)))
+  })
+
+  // Every number the voice is made of comes from the tuning, which is what
+  // lets the bench at lab/deep-bass.html turn them while a riff is playing.
+  it('takes its numbers from the tuning it is handed', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, {
+      freq: 220,
+      duration: 1,
+      tuning: { octave: 1, ratio: 3, growl: 4, body: 1, tone: 20, q: 9, wobble: 7 },
+    })
+    const { carrier, modulator, wobble } = partsOf(ctx)
+
+    expect(carrier.frequency.value).toBe(220)
+    expect(modulator.frequency.value).toBe(660)
+    expect(wobble.frequency.value).toBe(7)
+
+    const lid = ctx.filters.find((filter) => filter.type === 'lowpass')!
+    expect(lid.frequency.events[0].value).toBe(220 * 20)
+    expect(lid.Q.value).toBe(9)
+
+    // An index is how far the pitch is pushed, counted in modulator cycles, so
+    // asking for four of them at 660Hz is a 2640Hz swing.
+    const [bit, settled] = indexOf(ctx).gain.events
+    expect(bit.value).toBe(deviationHz(4, 660))
+    expect(settled.value).toBe(deviationHz(1, 660))
   })
 
   it('shapes the envelope from the tuning too', () => {

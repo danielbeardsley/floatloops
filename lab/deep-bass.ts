@@ -48,10 +48,21 @@ const KNOBS: readonly Knob[] = [
   { key: 'attack', label: 'attack', min: 0.001, max: 0.2, step: 0.001, note: 'Seconds. Under about 0.005 it clicks.' },
   { key: 'decay', label: 'decay', min: 0.05, max: 10, step: 0.05, note: 'Seconds to fade out if held that long. Short values sag hard.' },
   { key: 'release', label: 'release', min: 0.01, max: 1, step: 0.01, note: 'Seconds. Long enough and one note runs into the next.' },
-  { key: 'open', label: 'filter open', min: 1, max: 32, step: 0.1, note: 'Cutoff at the start, as a multiple of the pitch.' },
-  { key: 'closed', label: 'filter closed', min: 0.5, max: 16, step: 0.05, note: 'And where it lands. Below 1 the note itself goes.' },
-  { key: 'sweep', label: 'sweep', min: 0.005, max: 1, step: 0.005, note: 'Seconds for the drop. This is the punch.' },
-  { key: 'q', label: 'resonance', min: 0.1, max: 20, step: 0.1, note: 'Past about 12 the filter sings its own note over the bass.' },
+  {
+    key: 'ratio',
+    label: 'ratio',
+    min: 0.25,
+    max: 8,
+    step: 0.25,
+    note: 'Where the modulator sits. Whole numbers are harmonics of the note; between them is bell metal.',
+  },
+  { key: 'growl', label: 'growl', min: 0.01, max: 16, step: 0.05, note: 'How bright the note lands. Uneven: near 4 the note loses its own pitch almost entirely.' },
+  { key: 'body', label: 'body', min: 0.01, max: 8, step: 0.05, note: 'And what it settles to. The timbre of a held note.' },
+  { key: 'bite', label: 'bite time', min: 0.005, max: 1, step: 0.005, note: 'Seconds to fall from one to the other.' },
+  { key: 'wobble', label: 'wobble', min: 0, max: 30, step: 0.1, note: 'Wobbles per second. Past about 20 it stops being movement and becomes tone.' },
+  { key: 'wobbleDepth', label: 'wobble depth', min: 0, max: 2, step: 0.01, note: 'How far it moves. 0 holds the note still.' },
+  { key: 'tone', label: 'tone', min: 1, max: 32, step: 0.5, note: 'The lid over the sidebands, as a multiple of the pitch.' },
+  { key: 'q', label: 'resonance', min: 0.1, max: 20, step: 0.1, note: 'A little sharpens the top of the growl.' },
   { key: 'drive', label: 'drive', min: 0.01, max: 12, step: 0.01, note: 'The dirt. Past about 6 it is a square with a pitch.' },
   { key: 'level', label: 'level', min: 0, max: 1, step: 0.01, note: 'How loud the voice runs for a given note.' },
 ]
@@ -67,7 +78,9 @@ const PATTERNS: readonly Pattern[] = [
   { name: 'One note', steps: [0, null, null, null, null, null, null, null], hold: 0.6 },
 ]
 
-const STORAGE_KEY = 'floatloops.deepBassBench'
+// Versioned: the tuning changed shape when the voice did, and a saved set of
+// knob positions from the old one means nothing to the new.
+const STORAGE_KEY = 'floatloops.deepBassBench.v2'
 
 /** What the sliders currently say. Read fresh every time a note is scheduled. */
 let tuning: DeepBassTuning = load()
