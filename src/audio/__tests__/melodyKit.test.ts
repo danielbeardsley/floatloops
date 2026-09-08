@@ -300,6 +300,44 @@ describe('deep bass', () => {
     expect(quarter).toBeGreaterThan(0.5)
   })
 
+  // Every number the voice is made of comes from the tuning, which is what
+  // lets the bench at lab/deep-bass.html turn them while a riff is playing.
+  it('takes its numbers from the tuning it is handed', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, {
+      freq: 220,
+      duration: 1,
+      tuning: { octave: 1, open: 20, closed: 2, q: 9 },
+    })
+
+    expect(ctx.oscillators[0].frequency.value).toBe(220)
+    const [opened, closed] = lowpassOf(ctx).frequency.events
+    expect(opened.value).toBe(220 * 20)
+    expect(closed.value).toBe(220 * 2)
+    expect(lowpassOf(ctx).Q.value).toBe(9)
+  })
+
+  it('makes a dirtier curve when the drive is turned up', () => {
+    function curveAt(drive: number): Float32Array {
+      const ctx = new MockAudioContext()
+      deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220, tuning: { drive } })
+      return ctx.waveShapers[0].curve!
+    }
+
+    // Three quarters of the way up the curve: the harder the drive, the closer
+    // that point is pushed to the ceiling, which is the dirt.
+    const at = (curve: Float32Array) => curve[Math.floor(curve.length * 0.75)]
+    expect(at(curveAt(8))).toBeGreaterThan(at(curveAt(4)))
+    expect(at(curveAt(4))).toBeGreaterThan(at(curveAt(0.5)))
+  })
+
+  it('shapes the envelope from the tuning too', () => {
+    const points = deepBassEnvelopePoints(WHEN, 1, HELD, { attack: 0.05, release: 0.5, level: 0.2 })
+    expect(points[1].time).toBe(WHEN + 0.05)
+    expect(points[1].value).toBeCloseTo(0.2)
+    expect(points[3].time).toBe(WHEN + HELD + 0.5)
+  })
+
   // A club bass note leans back rather than sitting flat, but only slightly:
   // a held note is still most of itself by the time it is let go.
   it('sags a little while it is held, without fading out', () => {
@@ -317,5 +355,41 @@ describe('deep bass', () => {
     const fell = points[3].time - (WHEN + HELD)
     expect(fell).toBeLessThan(chorusPoints[3].time - (WHEN + HELD))
     expect(fell).toBeGreaterThan(0)
+  })
+})
+
+describe('the melody kit', () => {
+  it('offers the lead plus five more', () => {
+    expect(MELODY_KIT).toHaveLength(6)
+  })
+
+  it('gives every voice a unique id and a name', () => {
+    expect(new Set(MELODY_VOICE_IDS).size).toBe(MELODY_KIT.length)
+    for (const voice of MELODY_KIT) expect(voice.name.length).toBeGreaterThan(0)
+  })
+
+  // Every beat written before there was a choice is played with the lead, so
+  // it stays the default and stays first in the picker.
+  it('leads with the lead', () => {
+    expect(MELODY_KIT[0].id).toBe('lead')
+    expect(DEFAULT_MELODY_VOICE).toBe('lead')
+  })
+
+  it('looks voices up by id', () => {
+    expect(getMelodyVoice('bells').name).toBe('Bells')
+  })
+
+  // Unlike the drum kit's lookup: the id comes out of a saved beat, and the
+  // wrong sound beats a beat that will not open.
+  it('falls back to the lead rather than throwing on an unknown id', () => {
+    // @ts-expect-error deliberately invalid
+    expect(getMelodyVoice('theremin').id).toBe('lead')
+  })
+
+  it('knows which ids are real, so a save can be checked', () => {
+    expect(isMelodyVoiceId('flute')).toBe(true)
+    expect(isMelodyVoiceId('theremin')).toBe(false)
+    expect(isMelodyVoiceId(3)).toBe(false)
+    expect(isMelodyVoiceId(undefined)).toBe(false)
   })
 })

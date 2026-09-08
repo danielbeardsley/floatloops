@@ -16,5 +16,5 @@
     "noEmit": true,
     "types": ["vitest/globals", "vite-plugin-pwa/client"]
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "lab", "vite.config.ts"]
 }
