@@ -1,26 +1,26 @@
 import { LEVEL_FLOOR, TAIL, clamp, cleanupAfter } from './env'
 
 /**
- * Deep Bass: a house bassline. A round sine an octave under the note, with a
- * pair of detuned sawtooths sitting on top of it behind a filter that closes
- * as the note settles.
+ * Deep Bass: a club bassline. One sawtooth an octave under the note, behind a
+ * resonant lowpass that opens for an instant and then shuts down onto the
+ * fundamental.
  *
  * The octave down is what makes it a bass at all: the roll's lowest note is
  * only a C3, which is where a tune lives rather than where a bassline does.
  * Everything written on the roll comes out an octave below what the labels
  * say, so a line drawn along the bottom lands where a house bass belongs.
  *
- * The split between the two layers is the sound. The sine carries the weight
- * and goes straight to the output, so nothing ever thins it out. The
- * sawtooths are cut off below the pitch the roll actually says, which leaves
- * everything underneath to the sine and leaves them doing the one job a sine
- * cannot: on a tablet speaker, which reproduces almost nothing that low, the
- * harmonics they add are the whole reason the note can be heard at all.
+ * The whole sound is the filter sweep. A sawtooth is all harmonics, and left
+ * alone at this pitch it is a buzz; dropping the cutoff from well above the
+ * note to just above it, quickly, throws away that buzz but keeps the moment
+ * of it at the front of every note. That moment is the punch, and it is also
+ * what a tablet speaker can actually reproduce -- the fundamental down here is
+ * felt more than heard. The resonance is what makes the drop sing rather than
+ * merely happen.
  *
- * The lowpass over them -- open for a moment, then closing -- is the
- * difference between a bass note and a held buzz. It closes over a fixed
- * fifth of a second rather than over the note's own length, so a long note
- * settles and stays settled instead of sagging all the way through.
+ * The sweep runs over a fixed time rather than over the note's own length, so
+ * a long note settles and stays settled instead of sagging all the way
+ * through.
  */
 
 export type DeepBassOptions = {
@@ -40,43 +40,35 @@ export const DEEP_BASS_DEFAULTS: Required<DeepBassOptions> = {
 const OCTAVE_DOWN = 0.5
 
 /** Quick, but not so quick it clicks. A bass note should land, not appear. */
-const ATTACK = 0.014
-/** Short: house basslines stop between notes, which is where the groove is. */
-const RELEASE = 0.14
-
-/** How far apart the two sawtooths sit, in cents. */
-const DETUNE_CENTS = 8
-
-/*
- * The two layers, mixed to peak about where the other melody voices do: this
- * is the loudest thing in the kit for its level otherwise, since low notes
- * carry so much more energy than the same level up where the lead sits.
+const ATTACK = 0.01
+/**
+ * The note sags slowly while it is held: this is how long it would take to
+ * fade out entirely, which is far longer than any note it will be given, so
+ * in practice a held note only loses a little of itself.
  */
-const SUB_LEVEL = 0.36
-const BODY_MIX = 0.45
+const DECAY = 3.4
+/** Short: house basslines stop between notes, which is where the groove is. */
+const RELEASE = 0.06
 
 /**
- * Where the sawtooths are trimmed from below, as a multiple of the bass
- * pitch. Two: the octave above it, which is the note as the roll wrote it.
- * Below that is the sine's, and having both there only muddies it.
+ * Where the lowpass starts and ends, as multiples of the pitch being played.
+ * Ratios rather than fixed frequencies so that a note high on the roll sweeps
+ * the same way as one along the bottom instead of being filtered away.
  */
-const BODY_FLOOR = 2
-const BODY_FLOOR_Q = 0.7
-
-/** Where the lowpass over them starts and ends, as multiples of the pitch. */
-const OPEN = 10
-const CLOSED = 4
+const OPEN = 9
+const CLOSED = 1.6
 /** How long it takes to close, whatever the note's own length. */
-const SWEEP = 0.2
+const SWEEP = 0.15
 /** Resonance. Enough to sing as it closes, well short of self-oscillating. */
-const FILTER_Q = 2
+const FILTER_Q = 4
+
+/**
+ * How loud the voice runs for a given level. Under 1 because a sawtooth this
+ * low carries far more energy than the same level up where the lead sits.
+ */
+const VOICE_LEVEL = 0.6
 
 const MAX_HZ = 16000
-
-/** An interval in cents, as the ratio to multiply a pitch by. */
-function cents(value: number): number {
-  return Math.pow(2, value / 1200)
-}
 
 /** Total time from the start of the note until it has fully died away. */
 export function deepBassDuration(duration: number): number {
@@ -101,7 +93,7 @@ export type DeepBassEnvelopePoint = {
 }
 
 /**
- * Pure: land, hold, stop. Held apart from the graph so the shape can be
+ * Pure: land, sag, stop. Held apart from the graph so the shape can be
  * checked without Web Audio -- particularly that the note is let go of
  * promptly, since a bass that overlaps the next note turns to mud.
  */
@@ -110,13 +102,15 @@ export function deepBassEnvelopePoints(
   level: number,
   duration: number,
 ): DeepBassEnvelopePoint[] {
-  const peak = Math.max(level, LEVEL_FLOOR * 2)
+  const peak = Math.max(level * VOICE_LEVEL, LEVEL_FLOOR * 2)
   const releaseAt = when + duration
+  const held = Math.max(duration - ATTACK, 0)
+  const sagged = Math.max(peak * (1 - Math.min(held / DECAY, 1)), LEVEL_FLOOR * 2)
 
   return [
     { time: when, value: 0, ramp: 'set' },
     { time: when + ATTACK, value: peak, ramp: 'linear' },
-    { time: releaseAt, value: peak, ramp: 'set' },
+    { time: releaseAt, value: sagged, ramp: 'linear' },
     { time: releaseAt + RELEASE, value: LEVEL_FLOOR, ramp: 'exponential' },
   ]
 }
@@ -139,19 +133,9 @@ export function deepBass(
   }
   amp.connect(destination)
 
-  // The weight. Dead in tune and unfiltered.
-  const sub = ctx.createOscillator()
-  sub.type = 'sine'
-  sub.frequency.setValueAtTime(freq, when)
-  const subGain = ctx.createGain()
-  subGain.gain.value = SUB_LEVEL
-  sub.connect(subGain).connect(amp)
-  sub.start(when)
-  sub.stop(stopAt)
-
   const filter = ctx.createBiquadFilter()
   filter.type = 'lowpass'
-  filter.Q.value = FILTER_Q
+  filter.Q.setValueAtTime(FILTER_Q, when)
   filter.frequency.setValueAtTime(Math.min(freq * OPEN, MAX_HZ), when)
   // Never longer than the note itself, so a short one still gets to close.
   filter.frequency.exponentialRampToValueAtTime(
@@ -160,27 +144,12 @@ export function deepBass(
   )
   filter.connect(amp)
 
-  const floor = ctx.createBiquadFilter()
-  floor.type = 'highpass'
-  floor.Q.value = BODY_FLOOR_Q
-  floor.frequency.setValueAtTime(freq * BODY_FLOOR, when)
-  floor.connect(filter)
+  const osc = ctx.createOscillator()
+  osc.type = 'sawtooth'
+  osc.frequency.setValueAtTime(freq, when)
+  osc.connect(filter)
+  osc.start(when)
+  osc.stop(stopAt)
 
-  const body = ctx.createGain()
-  body.gain.value = BODY_MIX
-  body.connect(floor)
-
-  // Detuned in both directions around the sine rather than away from it: the
-  // pair beats against itself for width, while the note itself stays put.
-  for (const ratio of [cents(DETUNE_CENTS), cents(-DETUNE_CENTS)]) {
-    const osc = ctx.createOscillator()
-    osc.type = 'sawtooth'
-    osc.frequency.setValueAtTime(freq * ratio, when)
-    osc.connect(body)
-    osc.start(when)
-    osc.stop(stopAt)
-    cleanupAfter(osc, [osc])
-  }
-
-  cleanupAfter(sub, [sub, subGain, body, floor, filter, amp])
+  cleanupAfter(osc, [osc, filter, amp])
 }
