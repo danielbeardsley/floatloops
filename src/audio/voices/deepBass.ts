@@ -21,6 +21,13 @@ import { LEVEL_FLOOR, TAIL, clamp, cleanupAfter } from './env'
  * The sweep runs over a fixed time rather than over the note's own length, so
  * a long note settles and stays settled instead of sagging all the way
  * through.
+ *
+ * Then it is driven through a soft clip, which is where the dirt comes from.
+ * The saturation sits *after* the filter rather than before it, which is the
+ * whole trick: it makes new harmonics out of whatever the filter left behind,
+ * so a note stays gritty after the cutoff has shut, instead of the sweep
+ * taking the grit away with it. Clipping also flattens the peaks, which is
+ * what lets the voice sound big without the level to match.
  */
 
 export type DeepBassOptions = {
@@ -63,12 +70,43 @@ const SWEEP = 0.15
 const FILTER_Q = 4
 
 /**
- * How loud the voice runs for a given level. Under 1 because a sawtooth this
- * low carries far more energy than the same level up where the lead sits.
+ * How hard the signal is pushed into the clip. Higher is dirtier: 1 is barely
+ * bent, and past about 6 the note is a square with a pitch rather than a bass.
  */
-const VOICE_LEVEL = 0.6
+const DRIVE = 4
+
+/** Points in the shaping curve. Enough that the bend is smooth, not stepped. */
+const CURVE_POINTS = 1024
+
+/**
+ * How loud the voice runs for a given level. Under 1 because a sawtooth this
+ * low carries far more energy than the same level up where the lead sits, and
+ * lower again than an unclipped one would need: squaring off the peaks raises
+ * how loud the note reads without raising the peak itself.
+ */
+const VOICE_LEVEL = 0.45
 
 const MAX_HZ = 16000
+
+/**
+ * A soft clip, as the curve a WaveShaper reads: tanh bends the loud parts of
+ * the wave towards flat while leaving the quiet parts nearly alone, so the
+ * note gains harmonics rather than simply being chopped. Normalised by its own
+ * ceiling, so turning the drive up adds dirt without adding volume.
+ *
+ * Built once. It never changes, and every note can read the same one.
+ */
+function saturationCurve(drive: number): Float32Array {
+  const curve = new Float32Array(CURVE_POINTS)
+  const ceiling = Math.tanh(drive)
+  for (let i = 0; i < CURVE_POINTS; i += 1) {
+    const x = (i * 2) / (CURVE_POINTS - 1) - 1
+    curve[i] = Math.tanh(drive * x) / ceiling
+  }
+  return curve
+}
+
+const SATURATION = saturationCurve(DRIVE)
 
 /** Total time from the start of the note until it has fully died away. */
 export function deepBassDuration(duration: number): number {
@@ -142,7 +180,15 @@ export function deepBass(
     freq * CLOSED,
     when + Math.min(SWEEP, p.duration),
   )
-  filter.connect(amp)
+
+  // Post-filter, so the grit outlives the sweep. 4x oversampling because a
+  // clipped sawtooth makes harmonics well past where the samples can carry
+  // them, and without it those fold back down as a whistle over the note.
+  const dirt = ctx.createWaveShaper()
+  dirt.curve = SATURATION
+  dirt.oversample = '4x'
+  dirt.connect(amp)
+  filter.connect(dirt)
 
   const osc = ctx.createOscillator()
   osc.type = 'sawtooth'
@@ -151,5 +197,5 @@ export function deepBass(
   osc.start(when)
   osc.stop(stopAt)
 
-  cleanupAfter(osc, [osc, filter, amp])
+  cleanupAfter(osc, [osc, filter, dirt, amp])
 }

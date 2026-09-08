@@ -125,6 +125,11 @@ export class MockAudioBufferSourceNode extends MockAudioNode {
   }
 }
 
+export class MockWaveShaperNode extends MockAudioNode {
+  curve: Float32Array | null = null
+  oversample = 'none'
+}
+
 export class MockDynamicsCompressorNode extends MockAudioNode {
   readonly threshold = new MockAudioParam()
   readonly knee = new MockAudioParam()
@@ -143,6 +148,7 @@ export class MockAudioContext {
   readonly gains: MockGainNode[] = []
   readonly compressors: MockDynamicsCompressorNode[] = []
   readonly filters: MockBiquadFilterNode[] = []
+  readonly waveShapers: MockWaveShaperNode[] = []
   readonly bufferSources: MockAudioBufferSourceNode[] = []
   readonly buffers: MockAudioBuffer[] = []
 
@@ -161,6 +167,12 @@ export class MockAudioContext {
   createBiquadFilter(): MockBiquadFilterNode {
     const node = new MockBiquadFilterNode()
     this.filters.push(node)
+    return node
+  }
+
+  createWaveShaper(): MockWaveShaperNode {
+    const node = new MockWaveShaperNode()
+    this.waveShapers.push(node)
     return node
   }
 

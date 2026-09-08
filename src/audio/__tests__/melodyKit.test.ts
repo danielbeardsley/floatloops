@@ -269,6 +269,37 @@ describe('deep bass', () => {
     expect(sweep(0.05)).toBeLessThan(sweep(1))
   })
 
+  // The dirt is made from what the filter leaves behind, so it has to come
+  // after the sweep -- ahead of it, the closing cutoff would take the grit
+  // straight back off again.
+  it('drives the note through a soft clip after the filter, not before it', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220 })
+
+    expect(ctx.waveShapers).toHaveLength(1)
+    const [dirt] = ctx.waveShapers
+    expect(reaches(lowpassOf(ctx), dirt)).toBe(true)
+    expect(reaches(dirt, lowpassOf(ctx))).toBe(false)
+    expect(reaches(dirt, ctx.destination)).toBe(true)
+  })
+
+  it('shapes with a curve that bends rather than one that passes the note through', () => {
+    const ctx = new MockAudioContext()
+    deepBass(asAudioContext(ctx), asAudioNode(ctx.destination), 0, { freq: 220 })
+    const curve = ctx.waveShapers[0].curve!
+
+    // Rising all the way across, and symmetric about the middle, or it would
+    // be a fold rather than a clip.
+    for (let i = 1; i < curve.length; i += 1) expect(curve[i]).toBeGreaterThan(curve[i - 1])
+    expect(curve[0]).toBeCloseTo(-1)
+    expect(curve[curve.length - 1]).toBeCloseTo(1)
+
+    // Bent: a quiet input comes out louder than it went in, which is where the
+    // harmonics come from. A straight wire would leave it where it was.
+    const quarter = curve[Math.floor(curve.length * 0.75)]
+    expect(quarter).toBeGreaterThan(0.5)
+  })
+
   // A club bass note leans back rather than sitting flat, but only slightly:
   // a held note is still most of itself by the time it is let go.
   it('sags a little while it is held, without fading out', () => {
