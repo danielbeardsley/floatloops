@@ -3,6 +3,7 @@ import { getSequencer, playSong, play, resetTransport, stop } from '../transport
 import { useLibraryStore } from '../libraryStore'
 import { usePatternStore } from '../patternStore'
 import { useSongStore } from '../songStore'
+import { useSettingsStore } from '../settingsStore'
 import { addClip, addRow, createEmptySong, setRowLevel, toggleRowMute } from '../song'
 import {
   addNote,
@@ -76,7 +77,14 @@ beforeEach(() => {
     loading: false,
     error: null,
   })
-  usePatternStore.setState({ pattern: createEmptyPattern('Silent'), preview: null, isPlaying: false })
+  usePatternStore.setState({
+    pattern: createEmptyPattern('Silent'),
+    preview: null,
+    isPlaying: false,
+    fromSong: null,
+    atBar: null,
+  })
+  useSettingsStore.setState({ showOthers: true })
   useSongStore.setState({
     song: addClip(addRow(createEmptySong(), 'kick-beat'), 0, { start: 0, length: 2 }),
     preview: null,
@@ -194,5 +202,53 @@ describe('one timeline at a time', () => {
     expect(useSongStore.getState().isPlaying).toBe(false)
     expect(usePatternStore.getState().isPlaying).toBe(false)
     expect(getSequencer().isRunning).toBe(false)
+  })
+})
+
+/*
+ * One switch covers the picture and the sound both: a beat that looks clear of
+ * the bassline and sounds on top of it is worse than no outline at all.
+ */
+describe('a beat played where it sits in the song', () => {
+  /** The song's kick beat on row 0, and the beat being edited on row 1. */
+  function editingAtAPlace(atBar = 0) {
+    const mine = { ...createEmptyPattern('Mine'), id: 'mine' }
+    const library = useLibraryStore.getState()
+    useLibraryStore.setState({
+      patterns: [...library.patterns, mine],
+      patternsById: new Map([...library.patternsById, [mine.id, mine]]),
+    })
+
+    const song = addClip(addRow(useSongStore.getState().song, mine.id), 1, {
+      start: 0,
+      length: 2,
+    })
+    useSongStore.setState({ song })
+    usePatternStore.setState({ pattern: mine, fromSong: song.id, atBar })
+    return mine
+  }
+
+  it('sounds the rest of the song under it', async () => {
+    editingAtAPlace()
+    await play()
+    runOneBar()
+    // The beat itself is empty, so every hit heard is the song's kick.
+    expect(hits()).toBeGreaterThan(0)
+  })
+
+  it('falls silent again when the switch goes off', async () => {
+    editingAtAPlace()
+    useSettingsStore.setState({ showOthers: false })
+    await play()
+    runOneBar()
+    expect(hits()).toBe(0)
+  })
+
+  it('leaves a beat opened from the library playing on its own', async () => {
+    editingAtAPlace()
+    usePatternStore.setState({ fromSong: null })
+    await play()
+    runOneBar()
+    expect(hits()).toBe(0)
   })
 })

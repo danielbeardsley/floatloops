@@ -1,7 +1,8 @@
 import { STEPS_PER_MEASURE } from '../audio/timing'
 import { PITCH_COUNT } from '../audio/scale'
-import { clipAt, type Song, type SongRow } from './song'
-import type { Pattern } from './schema'
+import { clipAt, voicingsAt, type Song, type SongRow } from './song'
+import { totalSteps, type Pattern } from './schema'
+import type { Arrangement, Voicing } from './arrangement'
 
 /**
  * Where a beat sits in a song, and what else is sounding there.
@@ -88,6 +89,16 @@ export function placesFor(song: Song, patternId: string, measures: number): Plac
   return [...bars.entries()]
     .sort(([a], [b]) => a - b)
     .map(([bar, covered], index) => ({ bar, time: index + 1, bars: covered }))
+}
+
+/** The pass a beat is being edited at, given the bar the trip in aimed at. */
+export function placeOf(
+  song: Song,
+  patternId: string,
+  measures: number,
+  atBar: number | null,
+): Place | undefined {
+  return placeNear(placesFor(song, patternId, measures), atBar ?? 0)
 }
 
 /**
@@ -212,4 +223,57 @@ export function alignmentKey(ghosts: Ghosts): string {
   })
 
   return `${ghosts.playedSteps};${rows.join(';')}`
+}
+
+/**
+ * How far back the rest of the song sits while a beat is being edited against
+ * it. Not silent and not equal: the beat under the fingers has to stay in
+ * front, or the thing being lined up is the hardest thing to hear.
+ */
+export const OTHERS_LEVEL = 0.7
+
+/**
+ * The beat being edited, sounding where it sits in the song.
+ *
+ * It loops over its own length rather than playing the song through, because
+ * this is an editing loop: what is wanted is the same two bars again and
+ * again, with whatever the rest of the song puts against them. The song's
+ * tempo wins, exactly as it does in the song itself -- this is meant to be
+ * what the beat will sound like where it plays.
+ *
+ * The working beat replaces the saved one it stands for, so what is heard is
+ * the edit rather than what the library last wrote. Everything else is the
+ * song's own arrangement, which is why the row levels and mutes still apply
+ * to it and no second set of rules is needed.
+ */
+export function placeArrangement(
+  pattern: Pattern,
+  song: Song,
+  patterns: ReadonlyMap<string, Pattern>,
+  place: Place,
+): Arrangement {
+  const steps = totalSteps(pattern)
+  const played = Math.min(steps, place.bars * STEPS_PER_MEASURE)
+
+  return {
+    bpm: song.bpm,
+    steps,
+    at: (step) => {
+      const mine: Voicing = { pattern, step, gain: 1 }
+
+      // Past the end of the pass the clip has run out: the beat is not playing
+      // here at all, so nothing is playing against it either.
+      if (step >= played) return [mine]
+
+      const others = voicingsAt(song, patterns, place.bar * STEPS_PER_MEASURE + step)
+        .filter((voicing) => voicing.pattern.id !== pattern.id)
+        .map((voicing) => ({
+          ...voicing,
+          gain: voicing.gain * OTHERS_LEVEL,
+          melodyLevel: (voicing.melodyLevel ?? 1) * OTHERS_LEVEL,
+        }))
+
+      return [mine, ...others]
+    },
+  }
 }

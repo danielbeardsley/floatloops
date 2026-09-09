@@ -1,6 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { alignmentKey, ghostsAt, placeNear, placesFor, type Place } from '../alignment'
-import { addClip, addRow, createEmptySong, toggleRowMute, type Song } from '../song'
+import {
+  OTHERS_LEVEL,
+  alignmentKey,
+  ghostsAt,
+  placeArrangement,
+  placeNear,
+  placesFor,
+  type Place,
+} from '../alignment'
+import {
+  addClip,
+  addRow,
+  createEmptySong,
+  setRowLevel,
+  setSongBpm,
+  toggleRowMute,
+  type Song,
+} from '../song'
 import {
   addNote,
   createEmptyPattern,
@@ -253,5 +269,73 @@ describe('telling one place from another', () => {
     )
     expect(keys[0]).not.toBe(keys[1])
     expect(keys[2]).not.toBe(keys[0])
+  })
+})
+
+describe('playing a beat where it sits in the song', () => {
+  const place = (bar: number, bars = 1): Place => ({ bar, time: 1, bars })
+
+  const mine = setStep(beat('mine'), KICK, 0, 1)
+  const bass = setStep(beat('bass'), SNARE, 4, 1)
+  const both = songOf({ id: 'mine', start: 0, length: 4 }, { id: 'bass', start: 0, length: 4 })
+
+  it('loops the beat rather than playing the song through', () => {
+    const arrangement = placeArrangement(mine, both, library(mine, bass), place(0))
+    expect(arrangement.steps).toBe(STEPS_PER_MEASURE)
+  })
+
+  it('takes the tempo of the song, since that is what it will play at', () => {
+    const song = setSongBpm(both, 96)
+    expect(placeArrangement(mine, song, library(mine, bass), place(0)).bpm).toBe(96)
+  })
+
+  it('puts the beat being edited in front of the rest', () => {
+    const at = placeArrangement(mine, both, library(mine, bass), place(0)).at(4)
+    expect(at[0]).toMatchObject({ pattern: mine, step: 4, gain: 1 })
+  })
+
+  it('sounds what the rest of the song plays against it', () => {
+    const at = placeArrangement(mine, both, library(mine, bass), place(0)).at(4)
+    expect(at.map((voicing) => voicing.pattern.id)).toEqual(['mine', 'bass'])
+  })
+
+  it('sits the rest of it back, so the beat under the fingers stays in front', () => {
+    const at = placeArrangement(mine, both, library(mine, bass), place(0)).at(4)
+    expect(at[1].gain).toBeCloseTo(OTHERS_LEVEL)
+  })
+
+  it('keeps the level the row was given underneath that', () => {
+    const quiet = setRowLevel(both, 1, 0.5)
+    const at = placeArrangement(mine, quiet, library(mine, bass), place(0)).at(4)
+    expect(at[1].gain).toBeCloseTo(0.5 * OTHERS_LEVEL)
+  })
+
+  it('plays the beat in hand rather than the one the library saved', () => {
+    const saved = beat('mine')
+    const at = placeArrangement(mine, both, library(saved, bass), place(0)).at(0)
+    expect(at.filter((voicing) => voicing.pattern.id === 'mine')).toEqual([
+      { pattern: mine, step: 0, gain: 1 },
+    ])
+  })
+
+  it('leaves out a row the song has muted, which is not playing', () => {
+    const muted = toggleRowMute(both, 1)
+    const at = placeArrangement(mine, muted, library(mine, bass), place(0)).at(4)
+    expect(at.map((voicing) => voicing.pattern.id)).toEqual(['mine'])
+  })
+
+  it('has nothing to put against the steps the clip runs out under', () => {
+    const song = songOf({ id: 'mine', start: 0, length: 3 }, { id: 'bass', start: 0, length: 8 })
+    const twoBars = { ...mine, measures: 2 }
+    const arrangement = placeArrangement(twoBars, song, library(mine, bass), {
+      bar: 2,
+      time: 2,
+      bars: 1,
+    })
+
+    expect(arrangement.at(4).map((voicing) => voicing.pattern.id)).toEqual(['mine', 'bass'])
+    expect(arrangement.at(STEPS_PER_MEASURE + 4).map((voicing) => voicing.pattern.id)).toEqual([
+      'mine',
+    ])
   })
 })
