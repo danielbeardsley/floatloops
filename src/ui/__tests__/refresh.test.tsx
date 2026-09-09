@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { RefreshButton } from '../Refresh'
 import { usePatternStore } from '../../state/patternStore'
@@ -8,7 +8,10 @@ import { createEmptyPattern, setStep, type Pattern } from '../../state/schema'
 import { addClip, addRow, createEmptySong, type Song } from '../../state/song'
 
 const reload = vi.fn()
-let confirm: ReturnType<typeof vi.spyOn>
+// Typed by what it spies on. The bare ReturnType<typeof vi.spyOn> is the
+// unparameterised spy, whose call signature does not match window.confirm's --
+// which `tsc -b` rejects, and so the build rejected it too.
+let confirm: MockInstance<typeof window.confirm>
 
 /** The beat and the song as the library has them: nothing unsaved anywhere. */
 function saved(): { pattern: Pattern; song: Song } {
