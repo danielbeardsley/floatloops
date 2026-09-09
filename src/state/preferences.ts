@@ -10,6 +10,8 @@
 const KEY = 'floatloops:preferences'
 
 export type Preferences = {
+  /** Whether an edit saves itself, rather than waiting for the Save button. */
+  autoSave: boolean
   /** Whether the grid scrolls to keep up with the playhead. */
   followPlayhead: boolean
   /** Whether the piano roll is expanded. Closed by default: the drums are the
@@ -21,6 +23,7 @@ export type Preferences = {
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
+  autoSave: true,
   followPlayhead: true,
   melodyOpen: false,
   drumsOpen: true,
@@ -39,6 +42,7 @@ export function loadPreferences(): Preferences {
       typeof stored[key] === 'boolean' ? (stored[key] as boolean) : DEFAULT_PREFERENCES[key]
 
     return {
+      autoSave: read('autoSave'),
       followPlayhead: read('followPlayhead'),
       melodyOpen: read('melodyOpen'),
       drumsOpen: read('drumsOpen'),

@@ -411,6 +411,24 @@
   opacity: 0.6;
 }
 
+/* Reads as a lamp on the Save button rather than a second button competing
+   with it: same height, no fill of its own until it is on. */
+.transport__auto {
+  padding: 13px 14px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+}
+
+.transport__auto--on {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 /* --- library ------------------------------------------------------------- */
 
 .library {

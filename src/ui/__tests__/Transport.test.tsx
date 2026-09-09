@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { Transport } from '../Transport'
+import { SongTransport, Transport } from '../Transport'
 import { usePatternStore } from '../../state/patternStore'
 import { useLibraryStore } from '../../state/libraryStore'
+import { useSettingsStore } from '../../state/settingsStore'
 import { useSongStore } from '../../state/songStore'
-import { addRow, createEmptySong } from '../../state/song'
+import { addRow, createEmptySong, type Song } from '../../state/song'
 import { toggleStep, type Pattern } from '../../state/schema'
 import { resetTransport } from '../../state/transport'
 import { resetEngine, setContextFactory } from '../../audio/context'
@@ -28,6 +29,7 @@ beforeEach(() => {
   usePatternStore.setState({ pattern: demoPattern(), isPlaying: false })
   useLibraryStore.setState({ patterns: [], patternsById: new Map(), songs: [] })
   useSongStore.setState({ song: createEmptySong(), preview: null, isPlaying: false })
+  useSettingsStore.setState({ autoSave: true })
 })
 
 afterEach(() => {
@@ -120,5 +122,157 @@ describe('the unsaved mark', () => {
     useSongStore.setState({ song: addRow(createEmptySong(), beat.id) })
     render(<Transport />)
     expect(screen.queryByText('Unsaved')).not.toBeInTheDocument()
+  })
+})
+
+
+/**
+ * Auto-save is the Save button pressed for you, so these are all about *when*
+ * it presses: after an edit, once the editing stops, and not otherwise.
+ */
+describe('auto-save', () => {
+  /** Stands in for the library's save, and updates the store the way it does. */
+  function stubSave() {
+    const save = vi.fn(async (pattern: Pattern) => {
+      const saved = { ...pattern, updatedAt: Date.now() }
+      useLibraryStore.setState({ patterns: [saved], patternsById: new Map([[saved.id, saved]]) })
+      return saved
+    })
+    useLibraryStore.setState({ save })
+    return save
+  }
+
+  function stubSaveSong() {
+    const saveSong = vi.fn(async (song: Song) => {
+      const saved = { ...song, updatedAt: Date.now() }
+      useLibraryStore.setState({ songs: [saved] })
+      return saved
+    })
+    useLibraryStore.setState({ saveSong })
+    return saveSong
+  }
+
+  /** Runs out the wait, letting the save's promises settle inside act. */
+  async function waitOutTheDelay(ms = 800) {
+    await act(async () => {
+      vi.advanceTimersByTime(ms)
+    })
+  }
+
+  function edit(bpm: number) {
+    fireEvent.change(screen.getByLabelText(/tempo in beats/i), { target: { value: String(bpm) } })
+  }
+
+  it('saves an edit with nobody pressing Save', async () => {
+    const save = stubSave()
+    render(<Transport />)
+
+    edit(150)
+    await waitOutTheDelay()
+
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(save.mock.calls[0][0].bpm).toBe(150)
+  })
+
+  it('clears the unsaved mark once it has saved', async () => {
+    stubSave()
+    render(<Transport />)
+    expect(screen.getByText('Unsaved')).toBeInTheDocument()
+
+    edit(150)
+    await waitOutTheDelay()
+
+    expect(screen.queryByText('Unsaved')).not.toBeInTheDocument()
+  })
+
+  // Otherwise opening the app files the starting beat under its demo name
+  // before anyone has touched it.
+  it('leaves an untouched beat out of the library', async () => {
+    const save = stubSave()
+    render(<Transport />)
+
+    await waitOutTheDelay(5000)
+
+    expect(save).not.toHaveBeenCalled()
+    expect(screen.getByText('Unsaved')).toBeInTheDocument()
+  })
+
+  it('stays out of it when switched off', async () => {
+    useSettingsStore.setState({ autoSave: false })
+    const save = stubSave()
+    render(<Transport />)
+
+    edit(150)
+    await waitOutTheDelay()
+
+    expect(save).not.toHaveBeenCalled()
+  })
+
+  // A painted run of steps replaces the pattern on every cell the finger
+  // crosses, and each save is a write plus a re-read of the whole library.
+  it('saves once at the end of a burst, not once per edit', async () => {
+    const save = stubSave()
+    render(<Transport />)
+
+    edit(150)
+    await act(async () => void vi.advanceTimersByTime(200))
+    edit(151)
+    await act(async () => void vi.advanceTimersByTime(200))
+    edit(152)
+    await waitOutTheDelay()
+
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(save.mock.calls[0][0].bpm).toBe(152)
+  })
+
+  it('picks up work already on screen when it is switched on', async () => {
+    useSettingsStore.setState({ autoSave: false })
+    const save = stubSave()
+    render(<Transport />)
+
+    edit(150)
+    await waitOutTheDelay()
+    expect(save).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Auto-save' }))
+    await waitOutTheDelay()
+
+    expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it('remembers being switched off', () => {
+    render(<Transport />)
+    const toggle = screen.getByRole('button', { name: 'Auto-save' })
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(toggle)
+
+    expect(useSettingsStore.getState().autoSave).toBe(false)
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  // The song has the same Save button, so it gets the same treatment.
+  it('saves the arrangement too', async () => {
+    const saveSong = stubSaveSong()
+    useSongStore.setState({ song: addRow(createEmptySong(), 'boom') })
+    render(<SongTransport />)
+
+    edit(150)
+    await waitOutTheDelay()
+
+    expect(saveSong).toHaveBeenCalledTimes(1)
+    expect(saveSong.mock.calls[0][0].bpm).toBe(150)
+  })
+
+  // An empty arrangement has nothing to lose, and filing one under "New song"
+  // would put a row of them in the library.
+  it('leaves an empty arrangement alone', async () => {
+    const saveSong = stubSaveSong()
+    render(<SongTransport />)
+
+    edit(150)
+    await waitOutTheDelay()
+
+    expect(saveSong).not.toHaveBeenCalled()
   })
 })

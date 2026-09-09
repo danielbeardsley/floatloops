@@ -1,12 +1,25 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { usePatternStore } from '../state/patternStore'
 import { useSongStore } from '../state/songStore'
 import { useLibraryStore } from '../state/libraryStore'
+import { useSettingsStore } from '../state/settingsStore'
 import { toggleSongPlay, togglePlay } from '../state/transport'
 import { MAX_BPM, MIN_BPM } from '../audio/timing'
+import type { Pattern } from '../state/schema'
+import type { Song } from '../state/song'
 import { isUnsaved, patternIsInSong, songIsUnsaved } from './unsaved'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
+
+/**
+ * How long an auto-save waits for the editing to stop.
+ *
+ * Long enough to sit out a burst: painting a run of steps replaces the pattern
+ * on every cell the finger crosses, and each save is an IndexedDB write plus a
+ * re-read of the whole library. Short enough that letting go of the grid and
+ * reaching for the tablet's home button still saves what you just did.
+ */
+const AUTO_SAVE_DELAY = 700
 
 const SAVE_LABELS: Record<SaveState, string> = {
   idle: 'Save',
@@ -24,6 +37,10 @@ type TransportBarProps = {
   onRename: (name: string) => void
   onBpm: (bpm: number) => void
   onSave: () => Promise<void>
+  /** Whether there is anything to save, which is what auto-save waits for. */
+  unsaved: boolean
+  /** What would be saved. Watched by identity, so an edit restarts the wait. */
+  content: Pattern | Song
   children?: ReactNode
 }
 
@@ -40,10 +57,14 @@ function TransportBar({
   onRename,
   onBpm,
   onSave,
+  unsaved,
+  content,
   children,
 }: TransportBarProps) {
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const resetSaveLabel = useRef<number>(0)
+  const autoSave = useSettingsStore((s) => s.autoSave)
+  const setAutoSave = useSettingsStore((s) => s.setAutoSave)
 
   const save = useCallback(async () => {
     setSaveState('saving')
@@ -57,6 +78,27 @@ function TransportBar({
     window.clearTimeout(resetSaveLabel.current)
     resetSaveLabel.current = window.setTimeout(() => setSaveState('idle'), 1800)
   }, [onSave])
+
+  /**
+   * Auto-save is the Save button pressed for you, so it runs the same save and
+   * reports itself in the same label.
+   *
+   * Arriving on the screen is not an edit, hence the ref: without it, opening
+   * the app would file the untouched starting beat in the library before
+   * anyone had touched it. Turning the setting on counts, though -- it is how
+   * you ask for work already on screen to be looked after.
+   */
+  const settled = useRef(false)
+  useEffect(() => {
+    if (!settled.current) {
+      settled.current = true
+      return
+    }
+    if (!autoSave || !unsaved) return
+
+    const timer = window.setTimeout(() => void save(), AUTO_SAVE_DELAY)
+    return () => window.clearTimeout(timer)
+  }, [content, autoSave, unsaved, save])
 
   return (
     <div className="transport">
@@ -85,6 +127,17 @@ function TransportBar({
         disabled={saveState === 'saving'}
       >
         {SAVE_LABELS[saveState]}
+      </button>
+
+      <button
+        type="button"
+        className={`transport__auto${autoSave ? ' transport__auto--on' : ''}`}
+        onClick={() => setAutoSave(!autoSave)}
+        aria-pressed={autoSave}
+        aria-label="Auto-save"
+        title="Save every change automatically"
+      >
+        Auto
       </button>
 
       {children}
@@ -116,12 +169,14 @@ export function Transport() {
   const saved = useLibraryStore((s) => s.patternsById.get(pattern.id))
   const song = useSongStore((s) => s.song)
 
-  // Suppressed while the beat belongs to the song on screen, because the
-  // way-back bar is already saying so a few pixels above -- and saying the
-  // more useful half of it, which is what the song plays meanwhile.
-  const unsaved =
-    useMemo(() => isUnsaved(pattern, saved), [pattern, saved]) &&
-    !patternIsInSong(pattern, song)
+  const unsaved = useMemo(() => isUnsaved(pattern, saved), [pattern, saved])
+
+  // The *mark* is suppressed while the beat belongs to the song on screen,
+  // because the way-back bar is already saying so a few pixels above -- and
+  // saying the more useful half of it, which is what the song plays meanwhile.
+  // Auto-save is not suppressed with it: the mark is about what the song
+  // plays, and saving is exactly what puts the edits into that.
+  const marked = unsaved && !patternIsInSong(pattern, song)
 
   const onSave = useCallback(async () => {
     // Keep the saved copy, so pressing Save again updates in place rather
@@ -139,8 +194,10 @@ export function Transport() {
       onRename={rename}
       onBpm={setBpm}
       onSave={onSave}
+      unsaved={unsaved}
+      content={pattern}
     >
-      {unsaved ? <span className="unsaved-mark">Unsaved</span> : null}
+      {marked ? <span className="unsaved-mark">Unsaved</span> : null}
     </TransportBar>
   )
 }
@@ -172,6 +229,8 @@ export function SongTransport() {
       onRename={rename}
       onBpm={setBpm}
       onSave={onSave}
+      unsaved={unsaved}
+      content={song}
     >
       {unsaved ? <span className="unsaved-mark">Unsaved</span> : null}
     </TransportBar>

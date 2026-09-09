@@ -28,6 +28,7 @@ way to get standalone mode.
 | Separate library screen, not a side panel | Matches how the app is meant to be navigated. |
 | A song names its beats rather than copying them | One source of truth: fixing a beat fixes every song using it. |
 | A refresh button in the bar | It runs on a kiosk: no address bar to reload from. It asks first if anything is unsaved. |
+| Auto-save on by default, but switchable | Children do not press Save. It is the same save the button does, so nothing new can be lost -- and it can be turned off. |
 | React over Preact | Preact's bundle-size win is moot for a precached offline app. |
 
 ## Architecture
@@ -82,8 +83,20 @@ what was saved, which is what lets the kit gain, lose or reorder a drum without
 corrupting existing beats. A pattern written by a newer build is refused rather
 than mangled.
 
-Saving is still an explicit button press, so a reload loses unsaved work. See
-the roadmap.
+Saving is a button press, or the same press made for you: with **Auto-save**
+on, an edit files itself once the editing has stopped. The toggle sits beside
+Save in both transports, is on by default, and is remembered per device in
+`preferences.ts` alongside the other conveniences.
+
+It waits out a burst rather than writing per edit, because painting a run of
+steps replaces the pattern on every cell the finger crosses and each save is a
+write plus a re-read of the library. Arriving on a screen is not an edit, so
+the starting beat is not filed under its demo name before anyone has touched
+it, and an empty arrangement is left alone for the same reason -- but
+switching the setting on *does* count, so work already on screen gets picked
+up. The unsaved warnings all stay exactly as they were: with auto-save off, or
+in the moment before it fires, they are still what stands between a reload and
+lost work.
 
 ## Songs
 
@@ -279,8 +292,8 @@ corner turns that off; the choice is remembered per device in localStorage.
 - [x] **6** Library screen: list, thumbnails, play in place, duplicate/delete
 - [x] **7** Songs: arrange saved beats over bars, one row per beat
 - [ ] **8** PWA polish: PNG icons, wake lock, install hint, worker-based tick
-- [ ] **9** Extras: swing, accents, share-via-URL, alternate kits, undo,
-      autosave the working beat so a reload cannot lose it
+- [x] **9a** Auto-save: an edit saves itself, toggleable, on by default
+- [ ] **9** Extras: swing, accents, share-via-URL, alternate kits, undo
 
 ## Known platform traps
 
