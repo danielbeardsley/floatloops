@@ -16,9 +16,19 @@ export type PatternStore = {
    * currently open in the sequencer.
    */
   preview: Pattern | null
+  /**
+   * The id of the song this beat was opened from, when it was opened from one.
+   *
+   * Not the same question as whether the song plays it. The song store holds
+   * whatever was last arranged, so a beat opened from the library often
+   * belongs to it by coincidence -- and a beat being edited on its own must
+   * not offer a way back to a song nobody asked for, or let a fork rearrange
+   * one. Cleared by default, so only a deliberate trip in from a song sets it.
+   */
+  fromSong: string | null
   isPlaying: boolean
 
-  setPattern: (pattern: Pattern) => void
+  setPattern: (pattern: Pattern, fromSong?: string | null) => void
   setPreview: (preview: Pattern | null) => void
   toggleStep: (trackIndex: number, stepIndex: number) => void
   setStep: (trackIndex: number, stepIndex: number, value: number) => void
@@ -41,9 +51,10 @@ export type PatternStore = {
 export const usePatternStore = create<PatternStore>()((set) => ({
   pattern: edit.demoPattern(),
   preview: null,
+  fromSong: null,
   isPlaying: false,
 
-  setPattern: (pattern) => set({ pattern }),
+  setPattern: (pattern, fromSong = null) => set({ pattern, fromSong }),
   setPreview: (preview) => set({ preview }),
   toggleStep: (trackIndex, stepIndex) =>
     set((s) => ({ pattern: edit.toggleStep(s.pattern, trackIndex, stepIndex) })),

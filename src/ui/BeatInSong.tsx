@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useLibraryStore } from '../state/libraryStore'
 import { usePatternStore } from '../state/patternStore'
 import { useSongStore } from '../state/songStore'
-import { confirmLeavingBeatForSong, isUnsaved, patternIsInSong } from './unsaved'
+import { confirmLeavingBeatForSong, isUnsaved, songBeingEditedFor } from './unsaved'
 import { saveWorkingBeat } from './sharedBeat'
 
 /**
@@ -16,13 +16,16 @@ import { saveWorkingBeat } from './sharedBeat'
  * forgetting that save means the song quietly goes on playing the old version.
  * So the way back and the save are one button.
  *
- * Whether to show this is derived from the song rather than remembered from
- * the trip in: "this beat is in the song you have open" is true however you
- * got here, and cannot go stale when the row is removed.
+ * Shown for the trip in from the song, not merely for a beat the open song
+ * happens to play. The song store holds whatever was last arranged, so a beat
+ * opened from the library is often in it by coincidence -- and offering "back
+ * to song" there sends you somewhere you never were. The row is still checked
+ * alongside, so the bar goes when the song stops playing the beat.
  */
 export function BeatInSong() {
   const navigate = useNavigate()
   const pattern = usePatternStore((s) => s.pattern)
+  const fromSong = usePatternStore((s) => s.fromSong)
   const song = useSongStore((s) => s.song)
   const saved = useLibraryStore((s) => s.patternsById.get(pattern.id))
 
@@ -50,7 +53,7 @@ export function BeatInSong() {
   // Above the early return, because a hook cannot be conditional.
   const unsaved = useMemo(() => isUnsaved(pattern, saved), [pattern, saved])
 
-  if (!patternIsInSong(pattern, song)) return null
+  if (!songBeingEditedFor(pattern, song, fromSong)) return null
 
   return (
     <div className="in-song">

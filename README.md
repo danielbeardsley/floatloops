@@ -139,6 +139,25 @@ screen: changing it changes exactly what you are looking at, which is what you
 came to do. The notice still counts that song, because "used in" is a fact
 about the beat rather than a warning about this edit.
 
+### Edited *for* a song, or edited on its own
+
+Being in a song and being edited for one are different questions, and only the
+second is a context. The song store holds whatever was last arranged, so a beat
+opened from the library is often in it by coincidence -- and treating that as a
+context put a "back to song" on a screen you had not come from, and let a fork
+rearrange and save a song nobody had opened.
+
+So the trip in is remembered: `patternStore.fromSong` holds the id of the song
+a beat was opened from, and only the two routes in from the song screen set it.
+`songBeingEditedFor` is the one place that decides, checking the trip *and*
+that the song still plays the beat, so the context cannot outlive the row. It
+governs the way-back bar, the unsaved mark's suppression, and which song -- if
+any -- a fork may take over.
+
+The used-in notice is deliberately not governed by it. That a change would
+reach three songs is true however you got here, and truest of all when you got
+here from the library and cannot see any of them.
+
 Choosing the copy from inside a song points that song's row at the fork, clips
 and all (`setRowPattern`), and saves the song -- the swap is the whole point of
 having chosen the copy, and a reload would otherwise undo it. The other songs

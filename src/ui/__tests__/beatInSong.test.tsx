@@ -29,8 +29,16 @@ const save = vi.fn(async (pattern: Pattern) => {
   return saved
 })
 
-/** The beat as the library has it, and the same beat open in the sequencer. */
-function setUp({ inSong = true, edited = false } = {}) {
+/**
+ * The beat as the library has it, and the same beat open in the sequencer.
+ *
+ * `openedFromSong` is how the trip in is expressed: it defaults to matching
+ * `inSong`, since arriving from the song is the ordinary way to be editing a
+ * beat the song plays, but the two come apart when the library is the route.
+ */
+type SetUp = { inSong?: boolean; edited?: boolean; openedFromSong?: boolean }
+
+function setUp({ inSong = true, edited = false, openedFromSong = inSong }: SetUp = {}) {
   const saved: Pattern = { ...createEmptyPattern('Boom Bap'), id: 'boom' }
   const working = edited ? toggleStep(saved, 0, 0) : saved
 
@@ -42,16 +50,16 @@ function setUp({ inSong = true, edited = false } = {}) {
     error: null,
     save,
   })
-  usePatternStore.setState({ pattern: working, preview: null, isPlaying: false })
-
-  const song = createEmptySong('Opener')
-  useSongStore.setState({
-    song: inSong ? addRow(song, saved.id) : addRow(song, 'some-other-beat'),
+  const song = addRow(createEmptySong('Opener'), inSong ? saved.id : 'some-other-beat')
+  useSongStore.setState({ song, preview: null, isPlaying: false })
+  usePatternStore.setState({
+    pattern: working,
     preview: null,
     isPlaying: false,
+    fromSong: openedFromSong ? song.id : null,
   })
 
-  return { saved, working }
+  return { saved, working, song }
 }
 
 function show() {
@@ -77,6 +85,28 @@ describe('the way back to a song', () => {
     setUp({ inSong: false })
     show()
     expect(screen.queryByText(/In the song/)).not.toBeInTheDocument()
+  })
+
+  /*
+   * The song store holds whatever was last arranged, so the open song often
+   * plays the beat you reached from the library. That is a fact about the
+   * beat, not a place you were: offering a way "back" would send you somewhere
+   * you had never been, and Save & back would file the edit as a trip you
+   * never made.
+   */
+  it('stays out of the way for a beat reached from the library', () => {
+    setUp({ inSong: true, openedFromSong: false })
+    show()
+    expect(screen.queryByText(/in the song/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /back to song/i })).not.toBeInTheDocument()
+  })
+
+  // The row can go while the beat is still open, and the bar goes with it.
+  it('stays out of the way once the song stops playing the beat', () => {
+    const { song } = setUp({ inSong: false, openedFromSong: true })
+    usePatternStore.setState({ fromSong: song.id })
+    show()
+    expect(screen.queryByText(/in the song/i)).not.toBeInTheDocument()
   })
 
   it('names the song the beat belongs to', () => {

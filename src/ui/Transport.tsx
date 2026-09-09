@@ -7,7 +7,7 @@ import { toggleSongPlay, togglePlay } from '../state/transport'
 import { MAX_BPM, MIN_BPM } from '../audio/timing'
 import type { Pattern } from '../state/schema'
 import type { Song } from '../state/song'
-import { isUnsaved, patternIsInSong, songIsUnsaved } from './unsaved'
+import { isUnsaved, songBeingEditedFor, songIsUnsaved } from './unsaved'
 import { describeUse, saveWorkingBeat, songsUsingPattern } from './sharedBeat'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
@@ -171,6 +171,7 @@ function TransportBar({
 export function Transport() {
   const isPlaying = usePatternStore((s) => s.isPlaying)
   const pattern = usePatternStore((s) => s.pattern)
+  const fromSong = usePatternStore((s) => s.fromSong)
   const setBpm = usePatternStore((s) => s.setBpm)
   const rename = usePatternStore((s) => s.rename)
   const saved = useLibraryStore((s) => s.patternsById.get(pattern.id))
@@ -186,12 +187,13 @@ export function Transport() {
     [pattern.id, songs],
   )
 
-  // The *mark* is suppressed while the beat belongs to the song on screen,
-  // because the way-back bar is already saying so a few pixels above -- and
-  // saying the more useful half of it, which is what the song plays meanwhile.
-  // Auto-save is not suppressed with it: the mark is about what the song
-  // plays, and saving is exactly what puts the edits into that.
-  const marked = unsaved && !patternIsInSong(pattern, song)
+  // The *mark* is suppressed only where the way-back bar is showing, a few
+  // pixels above, saying the more useful half of it: what the song plays
+  // meanwhile. Editing the same beat from the library has no such bar, so the
+  // mark is the only thing that would say it. Auto-save is not suppressed with
+  // it either way -- the mark is about what the song plays, and saving is
+  // exactly what puts the edits into that.
+  const marked = unsaved && !songBeingEditedFor(pattern, song, fromSong)
 
   // Shared with the way-back bar's Save, so a beat other songs play asks the
   // same question whichever button reaches it.

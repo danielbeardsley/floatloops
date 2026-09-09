@@ -57,7 +57,7 @@ beforeEach(() => {
   saveSong = vi.fn(async (song: Song) => song)
 
   useLibraryStore.setState({ patterns: [], patternsById: new Map(), songs: [], save, duplicate, saveSong })
-  usePatternStore.setState({ pattern: beat, preview: null, isPlaying: false })
+  usePatternStore.setState({ pattern: beat, preview: null, isPlaying: false, fromSong: null })
   useSongStore.setState({ song: createEmptySong(), preview: null, isPlaying: false })
 })
 
@@ -95,6 +95,7 @@ describe('saving a beat other songs play', () => {
     const rocket = songPlaying('Rocket')
     useLibraryStore.setState({ songs: [rocket] })
     useSongStore.setState({ song: rocket })
+    usePatternStore.setState({ fromSong: rocket.id })
 
     await saveAndAnswer()
 
@@ -151,8 +152,11 @@ describe('saving a beat other songs play', () => {
 
 describe('a fork made from inside a song', () => {
   beforeEach(() => {
-    useLibraryStore.setState({ songs: [songPlaying('Rocket'), songPlaying('Bath Time')] })
-    useSongStore.setState({ song: songPlaying('Rocket') })
+    // The same Rocket in the library and on screen, as a real trip in gives.
+    const rocket = songPlaying('Rocket')
+    useLibraryStore.setState({ songs: [rocket, songPlaying('Bath Time')] })
+    useSongStore.setState({ song: rocket })
+    usePatternStore.setState({ fromSong: rocket.id })
     answer = 'copy'
   })
 
@@ -202,5 +206,45 @@ describe('a fork made from the library', () => {
     expect(asked[0].inOpen).toBeNull()
     expect(saveSong).not.toHaveBeenCalled()
     expect(useSongStore.getState().song.rows).toHaveLength(0)
+  })
+})
+
+
+/**
+ * The song store holds whatever was last arranged, so a beat opened from the
+ * library is often in it by coincidence. That must not make the song a
+ * context: the fork would rearrange, and save, a song nobody opened.
+ */
+describe('a beat opened from the library while a song is loaded', () => {
+  let rocket: Song
+
+  beforeEach(() => {
+    rocket = songPlaying('Rocket')
+    useLibraryStore.setState({ songs: [rocket] })
+    useSongStore.setState({ song: rocket })
+    // The library route leaves this clear; only a trip in from the song sets it.
+    usePatternStore.setState({ fromSong: null })
+    answer = 'copy'
+  })
+
+  it('still asks, since the change would reach a song out of sight', async () => {
+    await saveAndAnswer()
+    expect(asked).toHaveLength(1)
+  })
+
+  it('offers a new beat rather than a copy for that song', async () => {
+    await saveAndAnswer()
+    expect(asked[0].inOpen).toBeNull()
+    expect(asked[0].others.map((song) => song.name)).toEqual(['Rocket'])
+  })
+
+  it('leaves the loaded song rows alone', async () => {
+    await saveAndAnswer()
+    expect(useSongStore.getState().song.rows[0].patternId).toBe('boom')
+  })
+
+  it('does not save a song nobody opened', async () => {
+    await saveAndAnswer()
+    expect(saveSong).not.toHaveBeenCalled()
   })
 })

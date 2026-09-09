@@ -44,7 +44,7 @@ export function BeatPicker({ onClose }: { onClose: () => void }) {
     // Straight into the sequencer: a brand new beat is silent, and an empty
     // row in the song would be nothing to look at.
     stop()
-    usePatternStore.getState().setPattern(saved)
+    usePatternStore.getState().setPattern(saved, useSongStore.getState().song.id)
     void navigate('/')
   }, [addRow, navigate, onClose, saveToLibrary])
 

@@ -116,12 +116,22 @@ describe('the unsaved mark', () => {
   })
 
   // The way-back bar sits directly above and says the more useful half of it.
-  it('leaves it to the way-back bar when the beat is in the open song', () => {
+  it('leaves it to the way-back bar when the beat was opened from the song', () => {
     library([beat])
-    usePatternStore.setState({ pattern: toggleStep(beat, 2, 5) })
-    useSongStore.setState({ song: addRow(createEmptySong(), beat.id) })
+    const song = addRow(createEmptySong(), beat.id)
+    useSongStore.setState({ song })
+    usePatternStore.setState({ pattern: toggleStep(beat, 2, 5), fromSong: song.id })
     render(<Transport />)
     expect(screen.queryByText('Unsaved')).not.toBeInTheDocument()
+  })
+
+  // No way-back bar on the library route, so nothing else would say it.
+  it('says it itself when the same beat was opened from the library', () => {
+    library([beat])
+    useSongStore.setState({ song: addRow(createEmptySong(), beat.id) })
+    usePatternStore.setState({ pattern: toggleStep(beat, 2, 5), fromSong: null })
+    render(<Transport />)
+    expect(screen.getByText('Unsaved')).toBeInTheDocument()
   })
 })
 

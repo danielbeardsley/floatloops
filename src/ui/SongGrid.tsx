@@ -192,7 +192,7 @@ export function SongGrid() {
       const pattern = useLibraryStore.getState().patternsById.get(patternId)
       if (!pattern) return
       stop()
-      usePatternStore.getState().setPattern(pattern)
+      usePatternStore.getState().setPattern(pattern, useSongStore.getState().song.id)
       void navigate('/')
     },
     [navigate],

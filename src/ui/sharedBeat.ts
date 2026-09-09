@@ -4,6 +4,7 @@ import { usePatternStore } from '../state/patternStore'
 import { useSongStore } from '../state/songStore'
 import type { Pattern } from '../state/schema'
 import type { Song } from '../state/song'
+import { songBeingEditedFor } from './unsaved'
 
 /**
  * A song row names a library beat rather than holding one, which is the point:
@@ -105,29 +106,34 @@ async function chooseSharedEdit(request: SharedEditRequest): Promise<SharedEdit>
  * the edits either way, and the save is the half that reaches the songs.
  */
 export async function saveWorkingBeat(): Promise<void> {
-  const { pattern, setPattern } = usePatternStore.getState()
+  const { pattern, fromSong, setPattern } = usePatternStore.getState()
   const library = useLibraryStore.getState()
   const { song, setRowPattern } = useSongStore.getState()
 
   const using = songsUsingPattern(pattern.id, library.songs)
-  const inOpen = song.rows.some((row) => row.patternId === pattern.id) ? song : null
+  // The song this beat was opened from, which is the only one a fork may
+  // rearrange. A beat opened from the library forks into a beat of its own,
+  // however many songs happen to be playing it -- including whichever one the
+  // song screen was last left on.
+  const inOpen = songBeingEditedFor(pattern, song, fromSong)
 
   const choice = await chooseSharedEdit({
     pattern,
     using,
     inOpen,
-    others: using.filter((item) => item.id !== song.id),
+    others: using.filter((item) => item.id !== inOpen?.id),
   })
 
   if (choice === 'everywhere') {
     // Keep the saved copy, so saving again updates in place rather than
-    // leaving the sequencer holding a stale updatedAt.
-    setPattern(await library.save(pattern))
+    // leaving the sequencer holding a stale updatedAt. The trip in is carried
+    // over with it: saving is not a change of context.
+    setPattern(await library.save(pattern), fromSong)
     return
   }
 
   const copy = await library.duplicate(pattern)
-  setPattern(copy)
+  setPattern(copy, fromSong)
 
   // The open song takes the fork; the rest keep the beat they had. Saved
   // rather than left in memory, because the swap is the whole point of having

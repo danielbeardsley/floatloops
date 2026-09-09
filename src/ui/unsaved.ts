@@ -138,6 +138,34 @@ export function patternIsInSong(pattern: Pattern, song: Song): boolean {
   return song.rows.some((row) => row.patternId === pattern.id)
 }
 
+/**
+ * The song the beat on screen is being edited as part of, or null.
+ *
+ * Being *in* a song is not the same as being edited *for* one. The song store
+ * holds whatever was last arranged, so a beat opened from the library is often
+ * in it by coincidence: that is a standing fact about the beat, which the
+ * used-in notice reports, but it is not a context. Only the trip in from the
+ * song makes it one.
+ *
+ * Both halves are needed. Without the trip, the library route inherits a song
+ * it never asked for; without the row check, the context outlives the row when
+ * the song stops playing the beat.
+ */
+export function songBeingEditedFor(
+  pattern: Pattern,
+  song: Song,
+  fromSong: string | null,
+): Song | null {
+  if (fromSong !== song.id || !patternIsInSong(pattern, song)) return null
+  return song
+}
+
+/** The same question about whatever is on screen, for the imperative callers. */
+export function openSongForBeat(): Song | null {
+  const { pattern, fromSong } = usePatternStore.getState()
+  return songBeingEditedFor(pattern, useSongStore.getState().song, fromSong)
+}
+
 /** The same question about whatever is on screen, for the imperative callers. */
 export function beatIsInSong(): boolean {
   return patternIsInSong(usePatternStore.getState().pattern, useSongStore.getState().song)
