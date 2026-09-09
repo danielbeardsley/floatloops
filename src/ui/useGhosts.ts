@@ -1,5 +1,12 @@
 import { useMemo } from 'react'
-import { ghostsAt, placeNear, placesFor, type GhostSource, type Place } from '../state/alignment'
+import {
+  alignmentKey,
+  ghostsAt,
+  placeNear,
+  placesFor,
+  type GhostSource,
+  type Place,
+} from '../state/alignment'
 import { useLibraryStore } from '../state/libraryStore'
 import { usePatternStore } from '../state/patternStore'
 import { useSettingsStore } from '../state/settingsStore'
@@ -53,6 +60,16 @@ export type Ghosts = PlaceInSong & {
    * run out: nothing of yours sounds there, so nothing lines up with it.
    */
   playedSteps: number
+  /**
+   * The nearest place the rest of the song lands differently, if there is one.
+   *
+   * Usually there is not: everything is one, two or four bars and the clips
+   * start on even bars, so every pass looks the same and there is nothing to
+   * choose between them. It is the odd song where the third time through lands
+   * differently -- and that is exactly the thing an arranger cannot see and
+   * needs telling about.
+   */
+  elsewhere: Place | null
 }
 
 /**
@@ -83,6 +100,27 @@ export function useGhosts(): Ghosts | null {
     [ghosts, hidden],
   )
 
+  // Every pass compared against the one on screen. Recomputed only when the
+  // arrangement or the beat's length changes, never while a step is drawn.
+  const elsewhere = useMemo(() => {
+    if (!here || !ghosts) return null
+
+    const key = alignmentKey(ghosts)
+    return (
+      here.places.find(
+        (other) =>
+          other.bar !== here.place.bar &&
+          alignmentKey(ghostsAt(song, patternsById, pattern.id, other, steps)) !== key,
+      ) ?? null
+    )
+  }, [here, ghosts, song, patternsById, pattern.id, steps])
+
   if (!here || !ghosts || !marks) return null
-  return { ...here, sources: ghosts.sources, marks, playedSteps: ghosts.playedSteps }
+  return {
+    ...here,
+    sources: ghosts.sources,
+    marks,
+    playedSteps: ghosts.playedSteps,
+    elsewhere,
+  }
 }

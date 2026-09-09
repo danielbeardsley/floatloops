@@ -14,7 +14,10 @@ import {
   type Pattern,
 } from '../../state/schema'
 import { isUnsaved } from '../unsaved'
-import { addClip, addRow, createEmptySong } from '../../state/song'
+import { addClip, addRow, createEmptySong, type Song } from '../../state/song'
+import { useSettingsStore } from '../../state/settingsStore'
+import { STEPS_PER_MEASURE } from '../../audio/timing'
+import { setStep } from '../../state/schema'
 
 const navigate = vi.fn()
 vi.mock('react-router-dom', async () => {
@@ -44,6 +47,8 @@ type SetUp = {
   clip?: { start: number; length: number }
   atBar?: number | null
   measures?: number
+  /** Other beats arranged alongside, each on its own row across the song. */
+  others?: Pattern[]
 }
 
 function setUp({
@@ -53,20 +58,27 @@ function setUp({
   clip,
   atBar = null,
   measures = 1,
+  others = [],
 }: SetUp = {}) {
   const saved: Pattern = { ...createEmptyPattern('Boom Bap', measures), id: 'boom' }
   const working = edited ? toggleStep(saved, 0, 0) : saved
 
+  const patterns = [saved, ...others]
   useLibraryStore.setState({
-    patterns: [saved],
-    patternsById: new Map([[saved.id, saved]]),
+    patterns,
+    patternsById: new Map(patterns.map((pattern) => [pattern.id, pattern])),
     songs: [],
     loading: false,
     error: null,
     save,
   })
-  let song = addRow(createEmptySong('Opener'), inSong ? saved.id : 'some-other-beat')
+  let song: Song = addRow(createEmptySong('Opener'), inSong ? saved.id : 'some-other-beat')
   if (clip) song = addClip(song, 0, clip)
+  song = others.reduce(
+    (built, other, index) =>
+      addClip(addRow(built, other.id), index + 1, { start: 0, length: built.bars }),
+    song,
+  )
   useSongStore.setState({ song, preview: null, isPlaying: false })
   usePatternStore.setState({
     pattern: working,
@@ -74,6 +86,7 @@ function setUp({
     isPlaying: false,
     fromSong: openedFromSong ? song.id : null,
     atBar,
+    hiddenOthers: [],
   })
 
   return { saved, working, song }
@@ -90,6 +103,7 @@ function show() {
 beforeEach(() => {
   navigate.mockClear()
   save.mockClear()
+  useSettingsStore.setState({ showOthers: true })
 })
 
 afterEach(() => {
@@ -330,5 +344,100 @@ describe('which place is being edited', () => {
     show()
     expect(screen.getByText(/In the song/)).toBeInTheDocument()
     expect(screen.queryByText(/bar/)).not.toBeInTheDocument()
+  })
+})
+
+describe('who else is playing here', () => {
+  const bass = (id: string, step: number, measures = 1): Pattern => {
+    const empty: Pattern = { ...createEmptyPattern(id, measures), id }
+    return setStep(empty, 0, step, 1)
+  }
+
+  it('names the beats the outlines belong to', () => {
+    setUp({ clip: { start: 0, length: 4 }, others: [bass('bassline', 4)] })
+    show()
+    expect(screen.getByRole('button', { name: 'bassline' })).toBeInTheDocument()
+  })
+
+  it('hides one when its chip is pressed, and brings it back', () => {
+    const { song } = setUp({ clip: { start: 0, length: 4 }, others: [bass('bassline', 4)] })
+    show()
+
+    fireEvent.click(screen.getByRole('button', { name: 'bassline' }))
+    expect(usePatternStore.getState().hiddenOthers).toEqual([song.rows[1].id])
+
+    fireEvent.click(screen.getByRole('button', { name: 'bassline' }))
+    expect(usePatternStore.getState().hiddenOthers).toEqual([])
+  })
+
+  it('says plainly when there is nothing else, rather than showing an empty overlay', () => {
+    setUp({ clip: { start: 0, length: 4 } })
+    show()
+    expect(screen.getByText('Nothing else plays here')).toBeInTheDocument()
+  })
+
+  it('says nothing at all while the switch is off', () => {
+    useSettingsStore.setState({ showOthers: false })
+    setUp({ clip: { start: 0, length: 4 }, others: [bass('bassline', 4)] })
+    show()
+    expect(screen.queryByRole('button', { name: 'bassline' })).not.toBeInTheDocument()
+  })
+
+  it('still says where you are while the switch is off', () => {
+    useSettingsStore.setState({ showOthers: false })
+    setUp({ clip: { start: 0, length: 4 }, atBar: 2 })
+    show()
+    expect(screen.getByText(/bar 3/)).toBeInTheDocument()
+  })
+})
+
+/*
+ * The one thing that cannot be seen from the beat screen: that this is not how
+ * the beats meet every time round.
+ */
+describe('a pass that lines up differently', () => {
+  /** A three-bar beat whose kick moves on its last bar. */
+  const wandering = (): Pattern => {
+    const empty: Pattern = { ...createEmptyPattern('wandering', 3), id: 'wandering' }
+    return setStep(setStep(empty, 0, 0, 1), 0, 2 * STEPS_PER_MEASURE + 8, 1)
+  }
+
+  it('is not mentioned when every time through is the same', () => {
+    setUp({ clip: { start: 0, length: 4 }, others: [{ ...createEmptyPattern('hats'), id: 'hats' }] })
+    show()
+    expect(screen.queryByText(/land differently/)).not.toBeInTheDocument()
+  })
+
+  it('names the nearest time the others land somewhere else', () => {
+    setUp({ clip: { start: 0, length: 3 }, others: [wandering()] })
+    show()
+    expect(screen.getByText(/They land differently the 2nd time/)).toBeInTheDocument()
+  })
+
+  it('goes there when it is pressed', () => {
+    setUp({ clip: { start: 0, length: 3 }, others: [wandering()] })
+    show()
+
+    fireEvent.click(screen.getByText(/They land differently/))
+    expect(usePatternStore.getState().atBar).toBe(1)
+  })
+
+  it('offers a way to step between the times, since they are not alike', () => {
+    setUp({ clip: { start: 0, length: 3 }, others: [wandering()], atBar: 1 })
+    show()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit at the next time it plays' }))
+    expect(usePatternStore.getState().atBar).toBe(2)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit at the time before this one' }))
+    expect(usePatternStore.getState().atBar).toBe(1)
+  })
+
+  it('leaves the arrows out when there is nothing to step between', () => {
+    setUp({ clip: { start: 0, length: 4 }, others: [{ ...createEmptyPattern('hats'), id: 'hats' }] })
+    show()
+    expect(
+      screen.queryByRole('button', { name: 'Edit at the next time it plays' }),
+    ).not.toBeInTheDocument()
   })
 })

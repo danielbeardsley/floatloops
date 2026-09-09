@@ -1084,6 +1084,86 @@
   font-size: 13px;
 }
 
+/* Which pass of the beat is being edited. The editor's ruler goes on counting
+   the beat's own measures from 1, so this is the only thing that can say where
+   in the song they are standing. */
+.in-song__place {
+  color: var(--text);
+}
+
+.in-song__step {
+  display: flex;
+  gap: 4px;
+}
+
+.in-song__arrow {
+  width: 30px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.in-song__none {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+/* --- who else is playing here -------------------------------------------- */
+
+.others {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+/*
+ * One per beat sounding at this place, saying whose outlines those are -- the
+ * one thing a merged overlay cannot say for itself. Off is a hollow chip, the
+ * same rule the ghosts themselves follow.
+ */
+.others__chip {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 13px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.others__chip--on {
+  background: var(--panel-raised);
+  border-color: var(--text-dim);
+  color: var(--text);
+}
+
+/* A row the song has switched off, drawn as faintly as its ghosts are. */
+.others__chip--muted {
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.others__elsewhere {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .in-song__failed {
   color: var(--accent);
   font-size: 13px;

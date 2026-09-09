@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { placeNear, placesFor } from '../state/alignment'
+import type { Place } from '../state/alignment'
 import { useLibraryStore } from '../state/libraryStore'
 import { usePatternStore } from '../state/patternStore'
 import { useSongStore } from '../state/songStore'
+import { OthersHere } from './OthersHere'
 import { barsLabel, timeLabel } from './places'
+import { useGhosts, usePlace } from './useGhosts'
 import { confirmLeavingBeatForSong, isUnsaved, songBeingEditedFor } from './unsaved'
 import { saveWorkingBeat } from './sharedBeat'
 
@@ -24,12 +26,19 @@ import { saveWorkingBeat } from './sharedBeat'
  * to song" there sends you somewhere you never were. The row is still checked
  * alongside, so the bar goes when the song stops playing the beat.
  */
+/** The bar of the pass one along from this one, stopping at either end. */
+function step(places: readonly Place[], from: Place, by: number): number {
+  const index = places.findIndex((place) => place.bar === from.bar)
+  const next = Math.min(places.length - 1, Math.max(0, index + by))
+  return places[next].bar
+}
+
 export function BeatInSong() {
   const navigate = useNavigate()
   const pattern = usePatternStore((s) => s.pattern)
   const fromSong = usePatternStore((s) => s.fromSong)
-  const atBar = usePatternStore((s) => s.atBar)
   const song = useSongStore((s) => s.song)
+  const setAtBar = usePatternStore((s) => s.setAtBar)
   const saved = useLibraryStore((s) => s.patternsById.get(pattern.id))
 
   const [saving, setSaving] = useState<'idle' | 'saving' | 'failed'>('idle')
@@ -56,13 +65,12 @@ export function BeatInSong() {
   // Above the early return, because a hook cannot be conditional.
   const unsaved = useMemo(() => isUnsaved(pattern, saved), [pattern, saved])
 
-  // Which pass of the beat is being edited. A bar in the middle of one resolves
-  // to the pass containing it, and no bar at all to the first place it plays.
-  const places = useMemo(
-    () => placesFor(song, pattern.id, pattern.measures),
-    [song, pattern.id, pattern.measures],
-  )
-  const place = useMemo(() => placeNear(places, atBar ?? 0), [places, atBar])
+  // Which pass of the beat is being edited, and -- while the switch is on --
+  // what else is playing there. The place is said either way: it is where you
+  // are, not something the switch turns off.
+  const here = usePlace()
+  const ghosts = useGhosts()
+  const place = here?.place ?? null
 
   if (!songBeingEditedFor(pattern, song, fromSong)) return null
 
@@ -75,10 +83,40 @@ export function BeatInSong() {
             {' · '}
             {barsLabel(place)}
             {/* Only worth saying when there is more than one time to be at. */}
-            {places.length > 1 ? ` · ${timeLabel(place)}` : ''}
+            {here && here.places.length > 1 ? ` · ${timeLabel(place)}` : ''}
           </span>
         ) : null}
       </span>
+
+      {/*
+       * Only where the passes actually differ. Everywhere else they are dead
+       * weight: every time through looks the same, so there is nothing to
+       * choose between them and no reason to offer the choice.
+       */}
+      {here && place && ghosts?.elsewhere ? (
+        <span className="in-song__step">
+          <button
+            type="button"
+            className="in-song__arrow"
+            onClick={() => setAtBar(step(here.places, place, -1))}
+            aria-label="Edit at the time before this one"
+            title="The time before this one"
+          >
+            ◂
+          </button>
+          <button
+            type="button"
+            className="in-song__arrow"
+            onClick={() => setAtBar(step(here.places, place, 1))}
+            aria-label="Edit at the next time it plays"
+            title="The next time it plays"
+          >
+            ▸
+          </button>
+        </span>
+      ) : null}
+
+      {ghosts ? <OthersHere ghosts={ghosts} /> : null}
 
       {unsaved ? (
         <span className="in-song__unsaved">
