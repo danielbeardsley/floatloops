@@ -14,8 +14,8 @@ export type Preferences = {
   autoSave: boolean
   /** Whether the grid scrolls to keep up with the playhead. */
   followPlayhead: boolean
-  /** Whether the piano roll is expanded. Closed by default: the drums are the
-   *  main event, and twelve tracks plus eight pitches is a lot of grid. */
+  /** Whether the piano roll is expanded. Open by default, like the drums: a
+   *  section you cannot see is one you do not know is there. */
   melodyOpen: boolean
   /** Whether the drum rows are expanded. Open by default, being the main event
    *  -- it is folded away to get at the melody, not the other way round. */
@@ -25,7 +25,7 @@ export type Preferences = {
 export const DEFAULT_PREFERENCES: Preferences = {
   autoSave: true,
   followPlayhead: true,
-  melodyOpen: false,
+  melodyOpen: true,
   drumsOpen: true,
 }
 

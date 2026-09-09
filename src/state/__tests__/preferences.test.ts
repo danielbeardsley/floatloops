@@ -56,8 +56,8 @@ describe('settings store', () => {
     expect(loadPreferences().followPlayhead).toBe(false)
   })
 
-  it('keeps the piano roll closed until asked', () => {
-    expect(DEFAULT_PREFERENCES.melodyOpen).toBe(false)
+  it('opens the piano roll to begin with, like the drums', () => {
+    expect(DEFAULT_PREFERENCES.melodyOpen).toBe(true)
   })
 
   it('does not drop one preference when writing another', () => {

@@ -69,7 +69,7 @@ afterEach(() => {
 })
 
 describe('the melody section', () => {
-  it('is collapsed to begin with', () => {
+  it('draws no pitch rows while it is folded away', () => {
     useSettingsStore.setState({ melodyOpen: false })
     render(<Grid />)
     expect(document.querySelectorAll('[data-pitch]')).toHaveLength(0)

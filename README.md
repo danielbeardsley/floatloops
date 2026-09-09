@@ -239,7 +239,8 @@ are remembered per device.
 
 ## The melody
 
-Below the drums, a collapsible piano roll: fourteen pitches of A minor
+Below the drums, a piano roll -- open to begin with, and collapsible from its
+header: fourteen pitches of A minor
 pentatonic, C3 up to G5, so no combination of notes can clash. Notes have a
 start and a length, snapped to the grid, which is why the melody is a list of
 `Note` objects rather than another grid of cells.
