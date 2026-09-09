@@ -21,6 +21,7 @@ export type SongStore = {
   setPreview: (preview: Song | null) => void
   addRow: (patternId: string) => void
   removeRow: (rowIndex: number) => void
+  setRowPattern: (rowIndex: number, patternId: string) => void
   setRowLevel: (rowIndex: number, level: number) => void
   toggleRowMute: (rowIndex: number) => void
   addClip: (rowIndex: number, draft: edit.ClipDraft) => void
@@ -42,6 +43,8 @@ export const useSongStore = create<SongStore>()((set) => ({
   setPreview: (preview) => set({ preview }),
   addRow: (patternId) => set((s) => ({ song: edit.addRow(s.song, patternId) })),
   removeRow: (rowIndex) => set((s) => ({ song: edit.removeRow(s.song, rowIndex) })),
+  setRowPattern: (rowIndex, patternId) =>
+    set((s) => ({ song: edit.setRowPattern(s.song, rowIndex, patternId) })),
   setRowLevel: (rowIndex, level) =>
     set((s) => ({ song: edit.setRowLevel(s.song, rowIndex, level) })),
   toggleRowMute: (rowIndex) => set((s) => ({ song: edit.toggleRowMute(s.song, rowIndex) })),

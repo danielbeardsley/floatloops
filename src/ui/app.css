@@ -1015,6 +1015,17 @@
 }
 
 /* Shown in the transport while there is more in the editor than on disk. */
+/* A standing fact rather than a warning, so it stays quieter than the
+   unsaved mark sitting next to it. */
+.used-in {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .unsaved-mark {
   padding: 4px 12px;
   border-radius: 999px;

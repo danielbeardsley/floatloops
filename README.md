@@ -29,6 +29,7 @@ way to get standalone mode.
 | A song names its beats rather than copying them | One source of truth: fixing a beat fixes every song using it. |
 | A refresh button in the bar | It runs on a kiosk: no address bar to reload from. It asks first if anything is unsaved. |
 | Auto-save on by default, but switchable | Children do not press Save. It is the same save the button does, so nothing new can be lost -- and it can be turned off. |
+| A shared beat asks before it changes every song | Auto-save made that propagation silent. The notice says who is listening; the prompt offers a fork instead of a warning you can only obey. |
 | React over Preact | Preact's bundle-size win is moot for a precached offline app. |
 
 ## Architecture
@@ -110,6 +111,27 @@ row can outlive the beat it names, which is handled rather than prevented: the
 row draws as *Missing beat* and plays silence, and the rest of the song plays
 on. `migrateSong` keeps the dangling id rather than dropping the row, because
 the beat may simply not be loaded yet.
+
+The other price is that changing a beat changes every song that plays it --
+which auto-save turned from a deliberate press into something that happens on
+its own. Two things answer that, both in `ui/sharedBeat.ts`. The beat screen
+carries a **Used in Rocket** / **Used in 3 songs** notice, so who is listening
+is on screen before anything is touched. And the save that would reach those
+songs asks first, offering the fork: change the beat everyone shares, or take a
+copy and leave them the version they have.
+
+The question comes at save time rather than edit time, because the save is the
+dangerous half -- the sequencer holds the edits either way -- and it is asked
+once per beat per session, since a question that arrives every time auto-save
+fires is one nobody reads. Every route to a save goes through
+`saveWorkingBeat`, so it cannot be reached by the transport and missed by the
+way-back bar.
+
+Choosing the copy from inside a song points that song's row at the fork, clips
+and all (`setRowPattern`), and saves the song -- the swap is the whole point of
+having chosen the copy, and a reload would otherwise undo it. The other songs
+keep what they had. Choosing it from the library makes a new beat and leaves
+every song alone.
 
 The beat **loops inside its clip**, so a one-bar beat dragged across four bars
 plays four times and a two-bar beat plays 1,2,1,2. Every clip length is
@@ -293,6 +315,8 @@ corner turns that off; the choice is remembered per device in localStorage.
 - [x] **7** Songs: arrange saved beats over bars, one row per beat
 - [ ] **8** PWA polish: PNG icons, wake lock, install hint, worker-based tick
 - [x] **9a** Auto-save: an edit saves itself, toggleable, on by default
+- [x] **9b** Shared beats: a used-in notice, and a fork offered before a
+      change reaches the songs
 - [ ] **9** Extras: swing, accents, share-via-URL, alternate kits, undo
 
 ## Known platform traps

@@ -17,6 +17,7 @@ import {
   removeClip,
   removeRow,
   setRowLevel,
+  setRowPattern,
   setSongBpm,
   songArrangement,
   songSteps,
@@ -309,5 +310,24 @@ describe('the song as an arrangement', () => {
   it('is as long as the song', () => {
     const song = songWith('a', 0, 1)
     expect(songArrangement(song, patterns).steps).toBe(song.bars * STEPS_PER_MEASURE)
+  })
+})
+
+
+describe('setRowPattern', () => {
+  it('points the row at another beat', () => {
+    const song = addRow(createEmptySong(), 'boom')
+    expect(setRowPattern(song, 0, 'clap').rows[0].patternId).toBe('clap')
+  })
+
+  // What a fork needs: the row goes on playing in exactly the bars it did.
+  it('keeps the clips it was playing', () => {
+    const song = addClip(addRow(createEmptySong(), 'boom'), 0, { start: 2, length: 3 })
+    expect(setRowPattern(song, 0, 'clap').rows[0].clips).toEqual(song.rows[0].clips)
+  })
+
+  it('ignores a row that is not there', () => {
+    const song = addRow(createEmptySong(), 'boom')
+    expect(setRowPattern(song, 4, 'clap')).toEqual(song)
   })
 })

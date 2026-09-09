@@ -114,6 +114,17 @@ export function removeRow(song: Song, rowIndex: number): Song {
   return revise(song, { rows: song.rows.filter((_, i) => i !== rowIndex) })
 }
 
+/**
+ * Points a row at a different beat, keeping its clips.
+ *
+ * What a fork needs: the row goes on playing in exactly the bars it did, and
+ * only the beat underneath changes. Rebuilding the row instead would mean
+ * drawing every clip again.
+ */
+export function setRowPattern(song: Song, rowIndex: number, patternId: string): Song {
+  return mapRow(song, rowIndex, (row) => ({ ...row, patternId }))
+}
+
 export function setRowLevel(song: Song, rowIndex: number, level: number): Song {
   return mapRow(song, rowIndex, (row) => ({ ...row, level: Math.min(1, Math.max(0, level)) }))
 }

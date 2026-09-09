@@ -4,6 +4,7 @@ import { useLibraryStore } from '../state/libraryStore'
 import { usePatternStore } from '../state/patternStore'
 import { useSongStore } from '../state/songStore'
 import { confirmLeavingBeatForSong, isUnsaved, patternIsInSong } from './unsaved'
+import { saveWorkingBeat } from './sharedBeat'
 
 /**
  * The way back, shown while the beat in the sequencer is one the open song
@@ -22,26 +23,24 @@ import { confirmLeavingBeatForSong, isUnsaved, patternIsInSong } from './unsaved
 export function BeatInSong() {
   const navigate = useNavigate()
   const pattern = usePatternStore((s) => s.pattern)
-  const setPattern = usePatternStore((s) => s.setPattern)
   const song = useSongStore((s) => s.song)
   const saved = useLibraryStore((s) => s.patternsById.get(pattern.id))
-  const saveToLibrary = useLibraryStore((s) => s.save)
 
   const [saving, setSaving] = useState<'idle' | 'saving' | 'failed'>('idle')
 
   const onSaveAndBack = useCallback(async () => {
     setSaving('saving')
     try {
-      // Keep the saved copy, exactly as the transport's Save does, so the beat
-      // reads as saved the moment it is.
-      setPattern(await saveToLibrary(usePatternStore.getState().pattern))
+      // Exactly the transport's Save, down to the question a beat other songs
+      // play asks before it goes through.
+      await saveWorkingBeat()
     } catch {
       setSaving('failed')
       return
     }
     setSaving('idle')
     void navigate('/song')
-  }, [navigate, saveToLibrary, setPattern])
+  }, [navigate])
 
   const onLeave = useCallback(() => {
     if (confirmLeavingBeatForSong()) void navigate('/song')

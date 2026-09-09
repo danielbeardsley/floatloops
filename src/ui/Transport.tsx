@@ -8,6 +8,7 @@ import { MAX_BPM, MIN_BPM } from '../audio/timing'
 import type { Pattern } from '../state/schema'
 import type { Song } from '../state/song'
 import { isUnsaved, patternIsInSong, songIsUnsaved } from './unsaved'
+import { describeUse, saveWorkingBeat, songsUsingPattern } from './sharedBeat'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
 
@@ -89,16 +90,24 @@ function TransportBar({
    * you ask for work already on screen to be looked after.
    */
   const settled = useRef(false)
+  // Read at the moment it matters rather than depended on, so that the library
+  // finishing its load -- which is what settles whether anything is unsaved --
+  // is not itself mistaken for an edit.
+  const hasEdits = useRef(unsaved)
+  hasEdits.current = unsaved
+
   useEffect(() => {
     if (!settled.current) {
       settled.current = true
       return
     }
-    if (!autoSave || !unsaved) return
+    if (!autoSave || !hasEdits.current) return
 
-    const timer = window.setTimeout(() => void save(), AUTO_SAVE_DELAY)
+    const timer = window.setTimeout(() => {
+      if (hasEdits.current) void save()
+    }, AUTO_SAVE_DELAY)
     return () => window.clearTimeout(timer)
-  }, [content, autoSave, unsaved, save])
+  }, [content, autoSave, save])
 
   return (
     <div className="transport">
@@ -164,12 +173,18 @@ export function Transport() {
   const pattern = usePatternStore((s) => s.pattern)
   const setBpm = usePatternStore((s) => s.setBpm)
   const rename = usePatternStore((s) => s.rename)
-  const setPattern = usePatternStore((s) => s.setPattern)
-  const saveToLibrary = useLibraryStore((s) => s.save)
   const saved = useLibraryStore((s) => s.patternsById.get(pattern.id))
+  const songs = useLibraryStore((s) => s.songs)
   const song = useSongStore((s) => s.song)
 
   const unsaved = useMemo(() => isUnsaved(pattern, saved), [pattern, saved])
+
+  // Who else is listening. Shown whatever the beat's saved state, because it
+  // is a standing fact about the beat rather than news about this edit.
+  const usedIn = useMemo(
+    () => describeUse(songsUsingPattern(pattern.id, songs)),
+    [pattern.id, songs],
+  )
 
   // The *mark* is suppressed while the beat belongs to the song on screen,
   // because the way-back bar is already saying so a few pixels above -- and
@@ -178,11 +193,9 @@ export function Transport() {
   // plays, and saving is exactly what puts the edits into that.
   const marked = unsaved && !patternIsInSong(pattern, song)
 
-  const onSave = useCallback(async () => {
-    // Keep the saved copy, so pressing Save again updates in place rather
-    // than leaving the sequencer holding a stale updatedAt.
-    setPattern(await saveToLibrary(usePatternStore.getState().pattern))
-  }, [saveToLibrary, setPattern])
+  // Shared with the way-back bar's Save, so a beat other songs play asks the
+  // same question whichever button reaches it.
+  const onSave = useCallback(() => saveWorkingBeat(), [])
 
   return (
     <TransportBar
@@ -197,6 +210,7 @@ export function Transport() {
       unsaved={unsaved}
       content={pattern}
     >
+      {usedIn ? <span className="used-in">{usedIn}</span> : null}
       {marked ? <span className="unsaved-mark">Unsaved</span> : null}
     </TransportBar>
   )

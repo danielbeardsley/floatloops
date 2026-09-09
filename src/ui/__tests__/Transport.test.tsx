@@ -276,3 +276,40 @@ describe('auto-save', () => {
     expect(saveSong).not.toHaveBeenCalled()
   })
 })
+
+
+/** The standing fact about a beat: who else is playing it. */
+describe('the used-in notice', () => {
+  const beat: Pattern = { ...demoPattern(), id: 'boom' }
+
+  function songsPlayingIt(...names: string[]) {
+    useLibraryStore.setState({ songs: names.map((name) => addRow(createEmptySong(name), 'boom')) })
+    usePatternStore.setState({ pattern: beat })
+  }
+
+  it('says nothing while no song plays the beat', () => {
+    usePatternStore.setState({ pattern: beat })
+    render(<Transport />)
+    expect(screen.queryByText(/used in/i)).not.toBeInTheDocument()
+  })
+
+  it('names the song while there is one to name', () => {
+    songsPlayingIt('Rocket')
+    render(<Transport />)
+    expect(screen.getByText('Used in Rocket')).toBeInTheDocument()
+  })
+
+  it('counts them once there are several', () => {
+    songsPlayingIt('Rocket', 'Bath Time', 'Dinosaurs')
+    render(<Transport />)
+    expect(screen.getByText('Used in 3 songs')).toBeInTheDocument()
+  })
+
+  // It is about the beat, not about this edit, so saving does not clear it.
+  it('stays put alongside the unsaved mark', () => {
+    songsPlayingIt('Rocket')
+    render(<Transport />)
+    expect(screen.getByText('Used in Rocket')).toBeInTheDocument()
+    expect(screen.getByText('Unsaved')).toBeInTheDocument()
+  })
+})
