@@ -14,7 +14,7 @@ import {
   type Pattern,
 } from '../../state/schema'
 import { isUnsaved } from '../unsaved'
-import { addRow, createEmptySong } from '../../state/song'
+import { addClip, addRow, createEmptySong } from '../../state/song'
 
 const navigate = vi.fn()
 vi.mock('react-router-dom', async () => {
@@ -36,10 +36,25 @@ const save = vi.fn(async (pattern: Pattern) => {
  * `inSong`, since arriving from the song is the ordinary way to be editing a
  * beat the song plays, but the two come apart when the library is the route.
  */
-type SetUp = { inSong?: boolean; edited?: boolean; openedFromSong?: boolean }
+type SetUp = {
+  inSong?: boolean
+  edited?: boolean
+  openedFromSong?: boolean
+  /** Bars the beat is arranged over, and which bar the trip in aimed at. */
+  clip?: { start: number; length: number }
+  atBar?: number | null
+  measures?: number
+}
 
-function setUp({ inSong = true, edited = false, openedFromSong = inSong }: SetUp = {}) {
-  const saved: Pattern = { ...createEmptyPattern('Boom Bap'), id: 'boom' }
+function setUp({
+  inSong = true,
+  edited = false,
+  openedFromSong = inSong,
+  clip,
+  atBar = null,
+  measures = 1,
+}: SetUp = {}) {
+  const saved: Pattern = { ...createEmptyPattern('Boom Bap', measures), id: 'boom' }
   const working = edited ? toggleStep(saved, 0, 0) : saved
 
   useLibraryStore.setState({
@@ -50,13 +65,15 @@ function setUp({ inSong = true, edited = false, openedFromSong = inSong }: SetUp
     error: null,
     save,
   })
-  const song = addRow(createEmptySong('Opener'), inSong ? saved.id : 'some-other-beat')
+  let song = addRow(createEmptySong('Opener'), inSong ? saved.id : 'some-other-beat')
+  if (clip) song = addClip(song, 0, clip)
   useSongStore.setState({ song, preview: null, isPlaying: false })
   usePatternStore.setState({
     pattern: working,
     preview: null,
     isPlaying: false,
     fromSong: openedFromSong ? song.id : null,
+    atBar,
   })
 
   return { saved, working, song }
@@ -264,5 +281,54 @@ describe('the Song link in the header', () => {
 
     fireEvent.click(screen.getByRole('link', { name: 'Song' }))
     expect(confirm).not.toHaveBeenCalled()
+  })
+})
+
+/*
+ * The beat editor's ruler goes on counting the beat's own measures from 1, so
+ * the header is the only thing that can say where in the song they stand.
+ */
+describe('which place is being edited', () => {
+  it('says the bar the trip in aimed at', () => {
+    setUp({ clip: { start: 0, length: 4 }, atBar: 2 })
+    show()
+    expect(screen.getByText(/bar 3/)).toBeInTheDocument()
+  })
+
+  it('spans the bars a longer beat stands in', () => {
+    setUp({ measures: 2, clip: { start: 0, length: 4 }, atBar: 2 })
+    show()
+    expect(screen.getByText(/bars 3–4/)).toBeInTheDocument()
+  })
+
+  it('resolves a bar in the middle of a pass to the pass itself', () => {
+    setUp({ measures: 2, clip: { start: 0, length: 4 }, atBar: 3 })
+    show()
+    expect(screen.getByText(/bars 3–4/)).toBeInTheDocument()
+  })
+
+  it('falls back to the first place when the trip in named no bar', () => {
+    setUp({ clip: { start: 2, length: 2 } })
+    show()
+    expect(screen.getByText(/bar 3/)).toBeInTheDocument()
+  })
+
+  it('says which time through it is, once there is more than one', () => {
+    setUp({ clip: { start: 0, length: 4 }, atBar: 2 })
+    show()
+    expect(screen.getByText(/3rd time it plays/)).toBeInTheDocument()
+  })
+
+  it('does not count the times when the beat plays once', () => {
+    setUp({ clip: { start: 0, length: 1 } })
+    show()
+    expect(screen.queryByText(/time it plays/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing about a place for a row with nothing arranged on it', () => {
+    setUp()
+    show()
+    expect(screen.getByText(/In the song/)).toBeInTheDocument()
+    expect(screen.queryByText(/bar/)).not.toBeInTheDocument()
   })
 })

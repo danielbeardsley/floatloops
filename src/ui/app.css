@@ -834,6 +834,31 @@
   opacity: 0.8;
 }
 
+/*
+ * The way in to one pass of the beat, on the bar that pass begins.
+ *
+ * Centred rather than cornered so it clears both grips: the block underneath
+ * must still resize from either end, and on a one-bar block the two grips take
+ * the outer 16px each.
+ */
+.clip__edit {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.3);
+  color: var(--bg);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .song-add {
   grid-column: 1 / -1;
   margin-top: 6px;

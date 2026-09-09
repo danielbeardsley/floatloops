@@ -52,6 +52,11 @@ function grip(cell: HTMLElement, side: 'start' | 'end'): HTMLElement {
   return handle
 }
 
+/** The "x3" badge on a cell, which is not the only thing a cell now holds. */
+function passCount(cell: HTMLElement): string {
+  return cell.querySelector('.clip__bars')?.textContent ?? ''
+}
+
 function clipsOf(rowIndex: number) {
   return useSongStore.getState().song.rows[rowIndex].clips
 }
@@ -123,6 +128,62 @@ describe('layout', () => {
   })
 })
 
+describe('editing a beat at a place', () => {
+  it('offers a way in on the bar a block starts', () => {
+    setSong(addClip(addRow(createEmptySong(), BOOM.id), 0, { start: 2, length: 2 }))
+    renderGrid()
+    expect(screen.getByRole('button', { name: 'Edit Boom Bap at bar 3' })).toBeInTheDocument()
+  })
+
+  it('offers one per pass, because a pass is what you edit at', () => {
+    setSong(addClip(addRow(createEmptySong(), BOOM.id), 0, { start: 0, length: 3 }))
+    renderGrid()
+    expect(screen.getAllByRole('button', { name: /Edit Boom Bap at bar/ })).toHaveLength(3)
+  })
+
+  it('counts passes of the beat, not bars of the block', () => {
+    setSong(addClip(addRow(createEmptySong(), SHUFFLE.id), 0, { start: 0, length: 4 }))
+    renderGrid()
+    const ways = screen.getAllByRole('button', { name: /Edit Shuffle at bar/ })
+    expect(ways.map((way) => way.getAttribute('aria-label'))).toEqual([
+      'Edit Shuffle at bar 1',
+      'Edit Shuffle at bar 3',
+    ])
+  })
+
+  it('opens the beat at that bar', () => {
+    setSong(addClip(addRow(createEmptySong(), SHUFFLE.id), 0, { start: 1, length: 4 }))
+    renderGrid()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Shuffle at bar 4' }))
+
+    expect(usePatternStore.getState().pattern.id).toBe(SHUFFLE.id)
+    expect(usePatternStore.getState().atBar).toBe(3)
+    expect(navigate).toHaveBeenCalledWith('/')
+  })
+
+  /*
+   * The gesture layer owns every press on the grid, so the way in has to opt
+   * out of it explicitly -- otherwise pressing it would grab the block it sits
+   * on, and letting go without moving would delete it.
+   */
+  it('leaves the block it sits on alone', () => {
+    setSong(addClip(addRow(createEmptySong(), BOOM.id), 0, { start: 2, length: 1 }))
+    renderGrid()
+
+    const way = screen.getByRole('button', { name: 'Edit Boom Bap at bar 3' })
+    fireEvent.pointerDown(way, { pointerId: 1 })
+    fireEvent.pointerUp(way, { pointerId: 1 })
+
+    expect(clipsOf(0)).toHaveLength(1)
+  })
+
+  it('is not offered for a beat the library has lost', () => {
+    setSong(addClip(addRow(createEmptySong(), 'gone'), 0, { start: 0, length: 1 }))
+    renderGrid()
+    expect(screen.queryByRole('button', { name: /Edit .* at bar/ })).not.toBeInTheDocument()
+  })
+})
+
 describe('placing beats', () => {
   it('drops a one-bar block where a one-bar beat is tapped', () => {
     renderGrid()
@@ -190,21 +251,21 @@ describe('placing beats', () => {
     setSong(addClip(useSongStore.getState().song, 0, { start: 0, length: 3 }))
     renderGrid()
     // A one-bar beat across three bars is three times through.
-    expect(cellFor(0, 0).textContent).toBe('×3')
-    expect(cellFor(0, 1).textContent).toBe('')
+    expect(passCount(cellFor(0, 0))).toBe('×3')
+    expect(passCount(cellFor(0, 1))).toBe('')
   })
 
   it('counts passes rather than bars for a longer beat', () => {
     setSong(addClip(addRow(createEmptySong(), SHUFFLE.id), 0, { start: 0, length: 4 }))
     renderGrid()
     // Four bars of a two-bar beat is twice through, not four times.
-    expect(cellFor(0, 0).textContent).toBe('×2')
+    expect(passCount(cellFor(0, 0))).toBe('×2')
   })
 
   it('says nothing on a block the beat plays through once', () => {
     setSong(addClip(addRow(createEmptySong(), SHUFFLE.id), 0, { start: 0, length: 2 }))
     renderGrid()
-    expect(cellFor(0, 0).textContent).toBe('')
+    expect(passCount(cellFor(0, 0))).toBe('')
   })
 
   it('draws a block as one run from end to end', () => {
@@ -373,6 +434,13 @@ describe('rows and bars', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit Boom Bap' }))
     expect(usePatternStore.getState().pattern.id).toBe(BOOM.id)
     expect(navigate).toHaveBeenCalledWith('/')
+  })
+
+  it('opens it at no place in particular, since the row names no bar', () => {
+    setSong(addClip(addRow(createEmptySong(), BOOM.id), 0, { start: 2, length: 2 }))
+    renderGrid()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Boom Bap' }))
+    expect(usePatternStore.getState().atBar).toBeNull()
   })
 
   it('adds a bar', () => {

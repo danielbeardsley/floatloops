@@ -26,9 +26,19 @@ export type PatternStore = {
    * one. Cleared by default, so only a deliberate trip in from a song sets it.
    */
   fromSong: string | null
+  /**
+   * The song bar the beat was opened at, when it was opened at one.
+   *
+   * A beat edited on its own has no such question. Inside a song it plays in
+   * bars alongside other rows, so which pass is being edited decides what
+   * lines up with it -- and that is a fact about the trip in, not about the
+   * beat. Null means no particular place, which resolves to the first one.
+   */
+  atBar: number | null
   isPlaying: boolean
 
-  setPattern: (pattern: Pattern, fromSong?: string | null) => void
+  setPattern: (pattern: Pattern, fromSong?: string | null, atBar?: number | null) => void
+  setAtBar: (atBar: number | null) => void
   setPreview: (preview: Pattern | null) => void
   toggleStep: (trackIndex: number, stepIndex: number) => void
   setStep: (trackIndex: number, stepIndex: number, value: number) => void
@@ -52,9 +62,11 @@ export const usePatternStore = create<PatternStore>()((set) => ({
   pattern: edit.demoPattern(),
   preview: null,
   fromSong: null,
+  atBar: null,
   isPlaying: false,
 
-  setPattern: (pattern, fromSong = null) => set({ pattern, fromSong }),
+  setPattern: (pattern, fromSong = null, atBar = null) => set({ pattern, fromSong, atBar }),
+  setAtBar: (atBar) => set({ atBar }),
   setPreview: (preview) => set({ preview }),
   toggleStep: (trackIndex, stepIndex) =>
     set((s) => ({ pattern: edit.toggleStep(s.pattern, trackIndex, stepIndex) })),

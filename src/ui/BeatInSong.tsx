@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { placeNear, placesFor } from '../state/alignment'
 import { useLibraryStore } from '../state/libraryStore'
 import { usePatternStore } from '../state/patternStore'
 import { useSongStore } from '../state/songStore'
+import { barsLabel, timeLabel } from './places'
 import { confirmLeavingBeatForSong, isUnsaved, songBeingEditedFor } from './unsaved'
 import { saveWorkingBeat } from './sharedBeat'
 
@@ -26,6 +28,7 @@ export function BeatInSong() {
   const navigate = useNavigate()
   const pattern = usePatternStore((s) => s.pattern)
   const fromSong = usePatternStore((s) => s.fromSong)
+  const atBar = usePatternStore((s) => s.atBar)
   const song = useSongStore((s) => s.song)
   const saved = useLibraryStore((s) => s.patternsById.get(pattern.id))
 
@@ -53,12 +56,28 @@ export function BeatInSong() {
   // Above the early return, because a hook cannot be conditional.
   const unsaved = useMemo(() => isUnsaved(pattern, saved), [pattern, saved])
 
+  // Which pass of the beat is being edited. A bar in the middle of one resolves
+  // to the pass containing it, and no bar at all to the first place it plays.
+  const places = useMemo(
+    () => placesFor(song, pattern.id, pattern.measures),
+    [song, pattern.id, pattern.measures],
+  )
+  const place = useMemo(() => placeNear(places, atBar ?? 0), [places, atBar])
+
   if (!songBeingEditedFor(pattern, song, fromSong)) return null
 
   return (
     <div className="in-song">
       <span className="in-song__what">
         In the song <strong>{song.name}</strong>
+        {place ? (
+          <span className="in-song__place">
+            {' · '}
+            {barsLabel(place)}
+            {/* Only worth saying when there is more than one time to be at. */}
+            {places.length > 1 ? ` · ${timeLabel(place)}` : ''}
+          </span>
+        ) : null}
       </span>
 
       {unsaved ? (

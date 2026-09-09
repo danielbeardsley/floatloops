@@ -135,6 +135,12 @@ export function useNoteEditor({
       // stroke: a second finger would silently replace the note being drawn.
       if (gesture.current) return
 
+      // A control drawn inside a cell means itself, not the cell under it.
+      // The gesture layer owns every press on the grid, so opting out has to
+      // happen here rather than by stopping the event on the way up: the
+      // handlers sit on the scroller, above anything a cell contains.
+      if ((event.target as Element)?.closest?.('[data-passive]')) return
+
       const target = readNoteTarget(event.target as Element, lane)
       if (!target) return
 

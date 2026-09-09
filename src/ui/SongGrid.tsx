@@ -37,6 +37,16 @@ function nextLoops(
   return clipFill(row, rowIndex, patternBars, preview, bar + 1)?.loops === true
 }
 
+/**
+ * Whether the beat starts over on this bar, so the cell carries a way in to
+ * that pass. Not while the block is being dragged: a place that does not exist
+ * yet is nothing to aim at.
+ */
+function startsAPass(fill: ClipFill | null): boolean {
+  if (!fill || fill.draft) return false
+  return fill.loops || fill.role === 'start' || fill.role === 'single'
+}
+
 /** What a screen reader gets, since the seams and stripes say nothing to it. */
 function describeCell(name: string, bar: number, fill: ClipFill | null): string {
   const where = `${name} bar ${bar + 1}`
@@ -187,12 +197,17 @@ export function SongGrid() {
     store.removeBar(bar)
   }, [])
 
+  /**
+   * Opens a beat in the sequencer, at a place in the song when one was aimed
+   * at. The pips on the blocks name a bar; the row's own Edit button does not,
+   * which resolves to the first place the beat plays.
+   */
   const onEditBeat = useCallback(
-    (patternId: string) => {
+    (patternId: string, bar: number | null) => {
       const pattern = useLibraryStore.getState().patternsById.get(patternId)
       if (!pattern) return
       stop()
-      usePatternStore.getState().setPattern(pattern, useSongStore.getState().song.id)
+      usePatternStore.getState().setPattern(pattern, useSongStore.getState().song.id, bar)
       void navigate('/')
     },
     [navigate],
@@ -300,7 +315,7 @@ export function SongGrid() {
                     <button
                       type="button"
                       className="row__action"
-                      onClick={() => onEditBeat(row.patternId)}
+                      onClick={() => onEditBeat(row.patternId, null)}
                       disabled={!pattern}
                       aria-label={`Edit ${name}`}
                       title="Open this beat in the sequencer"
@@ -353,6 +368,29 @@ export function SongGrid() {
                       {fill && fill.passes > 1 && (fill.role === 'start' || fill.role === 'single') ? (
                         <span className="clip__bars" aria-hidden="true">
                           &times;{fill.passes}
+                        </span>
+                      ) : null}
+                      {/* One per pass, because a pass is what you edit *at*:
+                          the beat's own bar 1 falls here, and what the rest of
+                          the song is playing against it is decided from here.
+                          Opts out of the gesture layer, so the block it sits
+                          on can still be dragged, resized and tapped away. */}
+                      {startsAPass(fill) && pattern ? (
+                        <span
+                          className="clip__edit"
+                          role="button"
+                          tabIndex={0}
+                          data-passive
+                          onClick={() => onEditBeat(row.patternId, bar)}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter' && e.key !== ' ') return
+                            e.preventDefault()
+                            onEditBeat(row.patternId, bar)
+                          }}
+                          aria-label={`Edit ${name} at bar ${bar + 1}`}
+                          title={`Edit ${name} here, at bar ${bar + 1}`}
+                        >
+                          &#9998;
                         </span>
                       ) : null}
                       <NoteGrips role={fill && !fill.draft ? fill.role : null} />
