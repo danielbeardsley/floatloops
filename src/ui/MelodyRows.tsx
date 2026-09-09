@@ -6,6 +6,8 @@ import { STEPS_PER_BEAT, STEPS_PER_MEASURE } from '../audio/timing'
 import { bridgesGap, cellFill, pitchColor } from './melodyCells'
 import type { NotePreview } from './noteEdits'
 import { NoteGrips } from './NoteGrips'
+import { GhostMark } from './GhostMark'
+import { GHOST_NONE, ghostRole, type GhostMarks } from './ghostMarks'
 import { GridGap } from './GridGap'
 import type { StepWindow } from './visibleSteps'
 
@@ -23,10 +25,14 @@ export function MelodyRows({
   steps,
   shown,
   preview,
+  ghosts,
+  playedSteps,
 }: {
   steps: number
   shown: StepWindow
   preview: NotePreview | null
+  ghosts: GhostMarks | null
+  playedSteps: number | null
 }) {
   const melody = usePatternStore((s) => s.pattern.melody)
   const toggleMelodyMute = usePatternStore((s) => s.toggleMelodyMute)
@@ -109,9 +115,11 @@ export function MelodyRows({
             <GridGap key={`pitch-${pitch}-before`} span={shown.from} />,
             ...stepIndices.map((step) => {
               const fill = cellFill(melody, preview, pitch, step)
+              const ghost = ghosts?.notes[pitch]?.[step] ?? GHOST_NONE
               const classes = [
                 'cell',
                 'note',
+                playedSteps !== null && step >= playedSteps ? 'cell--unplayed' : '',
                 fill ? `note--${fill.role}` : '',
                 fill ? 'note--on' : '',
                 fill?.draft ? 'note--draft' : '',
@@ -130,9 +138,12 @@ export function MelodyRows({
                   data-pitch={pitch}
                   data-step={step}
                   style={{ ['--note-color' as string]: pitchColor(pitch) }}
-                  aria-label={`${pitchName(pitch)} step ${step + 1}`}
+                  aria-label={`${pitchName(pitch)} step ${step + 1}${
+                    ghost > GHOST_NONE ? ', another beat plays here' : ''
+                  }`}
                   aria-pressed={fill !== null}
                 >
+                  <GhostMark level={ghost} role={ghostRole(ghosts?.notes[pitch], step)} />
                   <NoteGrips role={fill && !fill.draft ? fill.role : null} />
                 </button>
               )

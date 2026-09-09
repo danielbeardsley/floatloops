@@ -20,6 +20,13 @@ export type Preferences = {
   /** Whether the drum rows are expanded. Open by default, being the main event
    *  -- it is folded away to get at the melody, not the other way round. */
   drumsOpen: boolean
+  /**
+   * Whether the rest of the song shows through the beat being edited, and
+   * sounds under it. On by default: arriving at a place in a song is asking
+   * what else is there, and one switch covers both because seeing a beat you
+   * cannot hear is worse than not seeing it at all.
+   */
+  showOthers: boolean
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -27,6 +34,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   followPlayhead: true,
   melodyOpen: true,
   drumsOpen: true,
+  showOthers: true,
 }
 
 export function loadPreferences(): Preferences {
@@ -46,6 +54,7 @@ export function loadPreferences(): Preferences {
       followPlayhead: read('followPlayhead'),
       melodyOpen: read('melodyOpen'),
       drumsOpen: read('drumsOpen'),
+      showOthers: read('showOthers'),
     }
   } catch {
     return DEFAULT_PREFERENCES

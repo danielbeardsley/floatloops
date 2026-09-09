@@ -2,6 +2,8 @@ import { usePatternStore } from '../state/patternStore'
 import { useSettingsStore } from '../state/settingsStore'
 import { getVoice } from '../audio/kit'
 import { STEPS_PER_BEAT, STEPS_PER_MEASURE } from '../audio/timing'
+import { GhostMark } from './GhostMark'
+import { GHOST_NONE, type GhostMarks } from './ghostMarks'
 import { GridGap } from './GridGap'
 import type { StepWindow } from './visibleSteps'
 
@@ -15,8 +17,23 @@ import type { StepWindow } from './visibleSteps'
  *
  * Only the steps in `shown` are drawn; the rest of the beat is held open by a
  * gap at either end. See visibleSteps.
+ *
+ * `ghosts` is the rest of the song showing through, when the beat is being
+ * edited at a place in one. Their kick lands in your kick row, because every
+ * beat is built from the same kit -- which is the whole reason lining two up
+ * needs no arithmetic beyond the step they fall on.
  */
-export function DrumRows({ steps, shown }: { steps: number; shown: StepWindow }) {
+export function DrumRows({
+  steps,
+  shown,
+  ghosts,
+  playedSteps,
+}: {
+  steps: number
+  shown: StepWindow
+  ghosts: GhostMarks | null
+  playedSteps: number | null
+}) {
   const tracks = usePatternStore((s) => s.pattern.tracks)
   const drumsMuted = usePatternStore((s) => s.pattern.drumsMuted)
   const toggleMute = usePatternStore((s) => s.toggleMute)
@@ -99,11 +116,13 @@ export function DrumRows({ steps, shown }: { steps: number; shown: StepWindow })
               <GridGap key={`${track.voiceId}-before`} span={shown.from} />,
               ...stepIndices.map((stepIndex) => {
                 const velocity = track.steps[stepIndex] ?? 0
+                const ghost = ghosts?.drums[trackIndex]?.[stepIndex] ?? GHOST_NONE
                 const classes = [
                   'cell',
                   velocity > 0 ? 'cell--on' : '',
                   stepIndex % STEPS_PER_BEAT === 0 ? 'cell--beat' : '',
                   stepIndex % STEPS_PER_MEASURE === 0 ? 'cell--bar' : '',
+                  playedSteps !== null && stepIndex >= playedSteps ? 'cell--unplayed' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')
@@ -119,9 +138,13 @@ export function DrumRows({ steps, shown }: { steps: number; shown: StepWindow })
                       ['--track-color' as string]: voice.color,
                       ['--velocity' as string]: velocity,
                     }}
-                    aria-label={`${voice.name} step ${stepIndex + 1}`}
+                    aria-label={`${voice.name} step ${stepIndex + 1}${
+                      ghost > GHOST_NONE ? ', another beat plays here' : ''
+                    }`}
                     aria-pressed={velocity > 0}
-                  />
+                  >
+                    <GhostMark level={ghost} role="single" />
+                  </button>
                 )
               }),
               <GridGap key={`${track.voiceId}-after`} span={steps - shown.to} />,

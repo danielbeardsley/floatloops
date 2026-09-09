@@ -16,6 +16,7 @@ import { MelodyRows } from './MelodyRows'
 import { useNoteEditor, type NoteTarget } from './useNoteEditor'
 import type { NotePreview, NoteShape } from './noteEdits'
 import { useSettingsStore } from '../state/settingsStore'
+import { useGhosts, usePlace } from './useGhosts'
 import { planFollow } from './followPlayhead'
 import { usePlayhead } from './usePlayhead'
 import { useStepPainter, type StepTarget } from './useStepPainter'
@@ -35,6 +36,13 @@ export function Grid() {
   const addMeasure = usePatternStore((s) => s.addMeasure)
   const followPlayhead = useSettingsStore((s) => s.followPlayhead)
   const setFollowPlayhead = useSettingsStore((s) => s.setFollowPlayhead)
+  const showOthers = useSettingsStore((s) => s.showOthers)
+  const setShowOthers = useSettingsStore((s) => s.setShowOthers)
+
+  // The switch belongs to the place, not to the beat: there is nothing to show
+  // through a beat being edited on its own.
+  const here = usePlace()
+  const ghosts = useGhosts()
 
   const steps = totalSteps(pattern)
 
@@ -238,6 +246,17 @@ export function Grid() {
             >
               Follow
             </button>
+            {here ? (
+              <button
+                type="button"
+                className={`follow${showOthers ? ' follow--on' : ''}`}
+                onClick={() => setShowOthers(!showOthers)}
+                aria-pressed={showOthers}
+                title="Show and hear the rest of the song against this beat"
+              >
+                Others
+              </button>
+            ) : null}
           </div>
           {measures.map((measure) => (
             <div key={measure} className="ruler__measure" data-measure={measure}>
@@ -263,9 +282,20 @@ export function Grid() {
             </div>
           ))}
 
-          <DrumRows steps={steps} shown={shown} />
+          <DrumRows
+            steps={steps}
+            shown={shown}
+            ghosts={ghosts?.marks ?? null}
+            playedSteps={ghosts?.playedSteps ?? null}
+          />
 
-          <MelodyRows steps={steps} shown={shown} preview={preview} />
+          <MelodyRows
+            steps={steps}
+            shown={shown}
+            preview={preview}
+            ghosts={ghosts?.marks ?? null}
+            playedSteps={ghosts?.playedSteps ?? null}
+          />
         </div>
 
         <button

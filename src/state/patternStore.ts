@@ -35,10 +35,19 @@ export type PatternStore = {
    * beat. Null means no particular place, which resolves to the first one.
    */
   atBar: number | null
+  /**
+   * Song rows whose beats are hidden from the ghosts, by row id.
+   *
+   * Part of the trip in rather than of the beat: it is a view of the song
+   * being tidied, not an edit, so it is cleared whenever a different beat is
+   * opened and never saved anywhere.
+   */
+  hiddenOthers: string[]
   isPlaying: boolean
 
   setPattern: (pattern: Pattern, fromSong?: string | null, atBar?: number | null) => void
   setAtBar: (atBar: number | null) => void
+  toggleOther: (rowId: string) => void
   setPreview: (preview: Pattern | null) => void
   toggleStep: (trackIndex: number, stepIndex: number) => void
   setStep: (trackIndex: number, stepIndex: number, value: number) => void
@@ -63,10 +72,18 @@ export const usePatternStore = create<PatternStore>()((set) => ({
   preview: null,
   fromSong: null,
   atBar: null,
+  hiddenOthers: [],
   isPlaying: false,
 
-  setPattern: (pattern, fromSong = null, atBar = null) => set({ pattern, fromSong, atBar }),
+  setPattern: (pattern, fromSong = null, atBar = null) =>
+    set({ pattern, fromSong, atBar, hiddenOthers: [] }),
   setAtBar: (atBar) => set({ atBar }),
+  toggleOther: (rowId) =>
+    set((s) => ({
+      hiddenOthers: s.hiddenOthers.includes(rowId)
+        ? s.hiddenOthers.filter((id) => id !== rowId)
+        : [...s.hiddenOthers, rowId],
+    })),
   setPreview: (preview) => set({ preview }),
   toggleStep: (trackIndex, stepIndex) =>
     set((s) => ({ pattern: edit.toggleStep(s.pattern, trackIndex, stepIndex) })),

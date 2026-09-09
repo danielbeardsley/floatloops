@@ -138,6 +138,7 @@
 .grid__corner {
   display: flex;
   align-items: center;
+  gap: 6px;
   padding-right: 8px;
   /* Pinned to both edges: it is the one cell in both frozen rows. */
   position: sticky;
@@ -291,6 +292,7 @@
 /* --- cells --------------------------------------------------------------- */
 
 .cell {
+  position: relative;
   width: var(--cell);
   height: var(--cell);
   border-radius: 12px;
@@ -318,6 +320,66 @@
   border-color: var(--track-color, var(--accent));
   /* Velocity is always 1 today, but accents will show up here for free. */
   opacity: calc(0.45 + 0.55 * var(--velocity, 1));
+}
+
+/*
+ * A step past the point the clip runs out, so the beat does not play here at
+ * this place. Striped exactly as a cut-short block is in the song grid: it is
+ * the same fact, seen from the other end.
+ */
+.cell--unplayed {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(255 255 255 / 0.06) 0 6px,
+    transparent 6px 12px
+  );
+}
+
+/* --- the rest of the song, showing through -------------------------------- */
+
+/*
+ * Another beat's hit, in your row. Hollow, because the rule has to survive a
+ * five-year-old: solid is mine, hollow is theirs. It keeps the row's own
+ * colour, since the grid has already taught that pink is the kick.
+ */
+.ghost {
+  position: absolute;
+  top: 22%;
+  bottom: 22%;
+  left: 0;
+  right: 0;
+  border: 2px solid var(--track-color, var(--note-color, var(--accent)));
+  border-radius: 8px;
+  opacity: 0.55;
+  /* Never what a finger meant: a step is drawn straight through one. */
+  pointer-events: none;
+}
+
+/* A row the song has switched off. Still there -- it is part of what is being
+   arranged around -- but not something you are lining up against yet. */
+.ghost--muted {
+  opacity: 0.25;
+}
+
+/* A run of ghosted steps reads as one held note, the same way a real one does:
+   the inner ends lose their rounding, and the outline reaches across the grid
+   gap rather than stopping at the cell. */
+.ghost--start {
+  border-radius: 8px 0 0 8px;
+  border-right: none;
+  right: calc(-1 * var(--gap));
+}
+
+.ghost--middle {
+  border-radius: 0;
+  border-right: none;
+  border-left: none;
+  right: calc(-1 * var(--gap));
+}
+
+.ghost--end {
+  border-radius: 0 8px 8px 0;
+  border-left: none;
 }
 
 .cell.is-playing {
