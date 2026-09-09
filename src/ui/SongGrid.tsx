@@ -1,4 +1,10 @@
-import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLibraryStore } from '../state/libraryStore'
 import { usePatternStore } from '../state/patternStore'
@@ -176,6 +182,16 @@ export function SongGrid() {
 
     root.scrollTo({ left: root.scrollLeft + (cell.left - frame.left) - LABEL_WIDTH, behavior: 'smooth' })
   }, [])
+
+  /**
+   * Coming back from a beat lands you looking at the bar you were editing at,
+   * rather than at the start of the song. You came from there.
+   */
+  useEffect(() => {
+    const { fromSong, atBar } = usePatternStore.getState()
+    if (atBar === null || fromSong !== useSongStore.getState().song.id) return
+    scrollToBar(atBar, true)
+  }, [scrollToBar])
 
   usePlayhead(scroller, isPlaying, {
     columnOf: (step) => Math.floor(step / STEPS_PER_MEASURE),

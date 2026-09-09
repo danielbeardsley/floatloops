@@ -151,6 +151,29 @@ describe('editing a beat at a place', () => {
     ])
   })
 
+  it('looks at the bar you were editing at when you come back', () => {
+    const scrollTo = vi.fn()
+    vi.spyOn(Element.prototype, 'scrollTo').mockImplementation(scrollTo)
+
+    const song = addClip(addRow(createEmptySong(), BOOM.id), 0, { start: 0, length: 8 })
+    setSong(song)
+    usePatternStore.setState({ pattern: BOOM, fromSong: song.id, atBar: 5 })
+    renderGrid()
+
+    expect(scrollTo).toHaveBeenCalled()
+  })
+
+  it('stays at the start for a song nobody was editing a beat of', () => {
+    const scrollTo = vi.fn()
+    vi.spyOn(Element.prototype, 'scrollTo').mockImplementation(scrollTo)
+
+    setSong(addClip(addRow(createEmptySong(), BOOM.id), 0, { start: 0, length: 8 }))
+    usePatternStore.setState({ pattern: BOOM, fromSong: null, atBar: 5 })
+    renderGrid()
+
+    expect(scrollTo).not.toHaveBeenCalled()
+  })
+
   it('opens the beat at that bar', () => {
     setSong(addClip(addRow(createEmptySong(), SHUFFLE.id), 0, { start: 1, length: 4 }))
     renderGrid()

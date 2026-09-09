@@ -30,6 +30,7 @@ way to get standalone mode.
 | A refresh button in the bar | It runs on a kiosk: no address bar to reload from. It asks first if anything is unsaved. |
 | Auto-save on by default, but switchable | Children do not press Save. It is the same save the button does, so nothing new can be lost -- and it can be turned off. |
 | A shared beat asks before it changes every song | Auto-save made that propagation silent. The notice says who is listening; the prompt offers a fork instead of a warning you can only obey. |
+| A beat is edited *at a place* in a song | Beats loop against each other, so where a hit lands is only half the question. The rest of the song draws through the grid and sounds under it. |
 | React over Preact | Preact's bundle-size win is moot for a precached offline app. |
 
 ## Architecture
@@ -227,6 +228,58 @@ from either end, slid along and tapped away exactly like a note. The one
 difference is `lockLane` -- a clip cannot change rows, because a row *is* which
 beat plays, so dragging one upward would silently swap the beat rather than
 move the block.
+
+### Editing a beat at a place in the song
+
+A beat edited on its own has no question about where its first step falls.
+Inside a song it plays in bars, alongside other rows, and a hit that fills a
+gap in one place lands on top of a bassline in another -- so lining beats up
+means saying *which place* is being edited.
+
+The unit is a **place**: one pass of the beat, at one bar. A pass rather than a
+bar, because the beat loops inside its clip -- a two-bar beat across eight bars
+is four places, and anchoring to a bar in the middle of one would show the
+beat's second bar under the heading of its first. Every bar a pass begins on
+carries its own way in, so the trip in names a bar as well as a song; the row's
+own **Edit** button names none, which resolves to the first place it plays.
+
+The header says which: **In Rocket · bars 5-6 · 2nd time it plays**. It has to
+say it whole, because the editor's ruler goes on counting the beat's own
+measures from 1 -- that is what removing a measure refers to -- so the bar
+range is the only thing that lets measure 2 be read as bar 6.
+
+**Others**, beside Follow, is what shows the rest of the song. Their kick draws
+in your kick row and their notes on the same pitches, which needs no mapping at
+all: every beat is rebuilt from the same kit on the way out of storage and the
+piano roll is a fixed fourteen pitches, so a step is a step and a row is a row
+across the whole library.
+
+| | |
+| --- | --- |
+| **Hollow, not filled** | The rule has to survive a five-year-old: solid is mine, hollow is theirs. The row keeps its own colour, since the grid has already taught that pink is the kick. |
+| **Chips name them** | A merged overlay cannot say whose outline that is. Tapping one takes that beat out, because five rows at once is a mush. |
+| **A muted row whispers** | It is part of what is being arranged around. Dropping it would make a beat look clear of something about to be switched back on. |
+| **A neighbour's own mute draws nothing** | A track its beat has muted makes no sound here, and a ghost of silence is a lie about what you are lining up with. |
+| **Ghosts take no pointers** | A step is drawn straight through one; the outline is never what the finger meant. |
+| **Nothing else plays here** | Said plainly. An empty overlay reads as a bug. |
+
+It is one switch for the picture and the sound both, because a beat that looks
+clear of the bassline and sounds on top of it is worse than no outline at all.
+Playing loops the beat's own length rather than playing the song through -- this
+is an editing loop, and what is wanted is the same two bars again with whatever
+the song puts against them. The song's tempo wins, the working beat replaces the
+saved one it stands for, and the rest is the song's own arrangement, row levels
+and mutes included. The others sit back at 0.7: equal is not in front.
+
+The one thing the beat screen cannot show for itself is that this is not how the
+beats meet every time round. Every pass is compared against the one on screen,
+and almost always comes back the same -- everything is one, two or four bars and
+the clips start on even bars -- so the arrows and **They land differently the
+3rd time** appear only in the song where they mean something.
+
+Where the clip runs out inside a pass, the steps past it are striped: the beat
+does not play there at this place, so nothing lines up with them either. It is
+the same fact as the song grid's cut-short tail, seen from the other end.
 
 ## The two halves
 

@@ -28,3 +28,14 @@ if (globalWindow && !('PointerEvent' in globalWindow)) {
 
   globalWindow.PointerEvent = TestPointerEvent
 }
+
+/**
+ * jsdom implements no scrolling at all, so an element has no `scrollTo` -- and
+ * the grids call it to follow the playhead and to land on the bar a beat was
+ * being edited at. Without a stand-in those paths throw in tests and pass in a
+ * browser, which is the worst way round. It does nothing, which is exactly
+ * what scrolling does in a document with no layout.
+ */
+if (typeof Element !== 'undefined' && !Element.prototype.scrollTo) {
+  Element.prototype.scrollTo = function scrollTo() {}
+}
