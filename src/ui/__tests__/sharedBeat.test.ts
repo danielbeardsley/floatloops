@@ -1,10 +1,18 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useLibraryStore } from '../../state/libraryStore'
 import { usePatternStore } from '../../state/patternStore'
 import { useSongStore } from '../../state/songStore'
 import { demoPattern, type Pattern } from '../../state/schema'
 import { addClip, addRow, createEmptySong, type Song } from '../../state/song'
-import { forgetSharedEditAnswers, saveWorkingBeat, songsUsingPattern, describeUse } from '../sharedBeat'
+import {
+  forgetSharedEditAnswers,
+  saveWorkingBeat,
+  songsUsingPattern,
+  describeUse,
+  useSharedEditPrompt,
+  type SharedEdit,
+  type SharedEditRequest,
+} from '../sharedBeat'
 
 const beat: Pattern = { ...demoPattern(), id: 'boom', name: 'Boom' }
 
@@ -16,18 +24,29 @@ function songPlaying(name: string, patternId = 'boom'): Song {
 let save: ReturnType<typeof vi.fn>
 let duplicate: ReturnType<typeof vi.fn>
 let saveSong: ReturnType<typeof vi.fn>
-let asked: string[]
-let answer: boolean
-const realConfirm = window.confirm
+let asked: SharedEditRequest[]
+let answer: SharedEdit
+
+/**
+ * Runs a save through to the end, answering the question if one is asked.
+ * The request is on the store the moment the save is called, since it goes up
+ * synchronously before the save has anything to await.
+ */
+async function saveAndAnswer(): Promise<void> {
+  const saving = saveWorkingBeat()
+  const { request, choose } = useSharedEditPrompt.getState()
+  if (request) {
+    asked.push(request)
+    choose(answer)
+  }
+  await saving
+}
 
 beforeEach(() => {
   forgetSharedEditAnswers()
+  useSharedEditPrompt.setState({ request: null, answer: null })
   asked = []
-  answer = false
-  window.confirm = (message?: string) => {
-    asked.push(message ?? '')
-    return answer
-  }
+  answer = 'everywhere'
 
   save = vi.fn(async (pattern: Pattern) => pattern)
   duplicate = vi.fn(async (pattern: Pattern) => ({
@@ -40,10 +59,6 @@ beforeEach(() => {
   useLibraryStore.setState({ patterns: [], patternsById: new Map(), songs: [], save, duplicate, saveSong })
   usePatternStore.setState({ pattern: beat, preview: null, isPlaying: false })
   useSongStore.setState({ song: createEmptySong(), preview: null, isPlaying: false })
-})
-
-afterEach(() => {
-  window.confirm = realConfirm
 })
 
 describe('who is playing a beat', () => {
@@ -68,27 +83,41 @@ describe('who is playing a beat', () => {
 
 describe('saving a beat other songs play', () => {
   it('saves without asking when no song plays it', async () => {
-    await saveWorkingBeat()
+    await saveAndAnswer()
 
     expect(asked).toHaveLength(0)
     expect(save).toHaveBeenCalledTimes(1)
   })
 
-  it('asks before a change reaches them, naming the beat and the count', async () => {
+  // Changing it changes exactly what is on screen, which is what was asked
+  // for. Asking would be a question with nothing behind it.
+  it('does not ask when the only song playing it is the one on screen', async () => {
+    const rocket = songPlaying('Rocket')
+    useLibraryStore.setState({ songs: [rocket] })
+    useSongStore.setState({ song: rocket })
+
+    await saveAndAnswer()
+
+    expect(asked).toHaveLength(0)
+    expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it('asks before a change reaches them, naming the beat and the songs', async () => {
     useLibraryStore.setState({ songs: [songPlaying('Rocket'), songPlaying('Bath Time')] })
 
-    await saveWorkingBeat()
+    await saveAndAnswer()
 
     expect(asked).toHaveLength(1)
-    expect(asked[0]).toContain('"Boom" plays in 2 songs')
-    expect(asked[0]).toContain('Changing it changes all of them')
+    expect(asked[0].pattern.name).toBe('Boom')
+    expect(asked[0].using.map((song) => song.name)).toEqual(['Rocket', 'Bath Time'])
+    expect(asked[0].others).toHaveLength(2)
   })
 
   it('changes the beat itself when that is the answer', async () => {
     useLibraryStore.setState({ songs: [songPlaying('Rocket')] })
-    answer = false
+    answer = 'everywhere'
 
-    await saveWorkingBeat()
+    await saveAndAnswer()
 
     expect(save).toHaveBeenCalledTimes(1)
     expect(duplicate).not.toHaveBeenCalled()
@@ -97,9 +126,9 @@ describe('saving a beat other songs play', () => {
 
   it('forks instead when a copy is asked for, leaving the original saved copy alone', async () => {
     useLibraryStore.setState({ songs: [songPlaying('Rocket')] })
-    answer = true
+    answer = 'copy'
 
-    await saveWorkingBeat()
+    await saveAndAnswer()
 
     expect(duplicate).toHaveBeenCalledTimes(1)
     expect(save).not.toHaveBeenCalled()
@@ -111,9 +140,9 @@ describe('saving a beat other songs play', () => {
   it('asks once, however many times the save comes round', async () => {
     useLibraryStore.setState({ songs: [songPlaying('Rocket')] })
 
-    await saveWorkingBeat()
-    await saveWorkingBeat()
-    await saveWorkingBeat()
+    await saveAndAnswer()
+    await saveAndAnswer()
+    await saveAndAnswer()
 
     expect(asked).toHaveLength(1)
     expect(save).toHaveBeenCalledTimes(3)
@@ -124,23 +153,23 @@ describe('a fork made from inside a song', () => {
   beforeEach(() => {
     useLibraryStore.setState({ songs: [songPlaying('Rocket'), songPlaying('Bath Time')] })
     useSongStore.setState({ song: songPlaying('Rocket') })
-    answer = true
+    answer = 'copy'
   })
 
-  it('offers the copy for the song on screen by name', async () => {
-    await saveWorkingBeat()
-    expect(asked[0]).toContain('Make a copy just for Rocket?')
+  it('offers the copy for the song on screen', async () => {
+    await saveAndAnswer()
+    expect(asked[0].inOpen?.name).toBe('Rocket')
   })
 
   it('points the open song at the copy', async () => {
-    await saveWorkingBeat()
+    await saveAndAnswer()
     expect(useSongStore.getState().song.rows[0].patternId).toBe('boom-copy')
   })
 
   it('keeps the row playing in the same bars', async () => {
     const before = useSongStore.getState().song.rows[0].clips
 
-    await saveWorkingBeat()
+    await saveAndAnswer()
 
     expect(useSongStore.getState().song.rows[0].clips).toEqual(before)
   })
@@ -148,14 +177,14 @@ describe('a fork made from inside a song', () => {
   // The swap is the whole point of having chosen the copy; a reload would
   // otherwise undo it.
   it('saves the song, so the swap outlives a reload', async () => {
-    await saveWorkingBeat()
+    await saveAndAnswer()
 
     expect(saveSong).toHaveBeenCalledTimes(1)
     expect(saveSong.mock.calls[0][0].rows[0].patternId).toBe('boom-copy')
   })
 
   it('leaves a song that is not open on the beat it had', async () => {
-    await saveWorkingBeat()
+    await saveAndAnswer()
 
     const untouched = useLibraryStore.getState().songs.find((s) => s.name === 'Bath Time')
     expect(untouched?.rows[0].patternId).toBe('boom')
@@ -166,11 +195,11 @@ describe('a fork made from the library', () => {
   it('touches no song at all', async () => {
     useLibraryStore.setState({ songs: [songPlaying('Rocket')] })
     useSongStore.setState({ song: createEmptySong() })
-    answer = true
+    answer = 'copy'
 
-    await saveWorkingBeat()
+    await saveAndAnswer()
 
-    expect(asked[0]).toContain('Make a copy to edit instead?')
+    expect(asked[0].inOpen).toBeNull()
     expect(saveSong).not.toHaveBeenCalled()
     expect(useSongStore.getState().song.rows).toHaveLength(0)
   })

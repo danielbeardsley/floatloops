@@ -120,12 +120,24 @@ is on screen before anything is touched. And the save that would reach those
 songs asks first, offering the fork: change the beat everyone shares, or take a
 copy and leave them the version they have.
 
+It is a dialog rather than a `window.confirm`, because the choice is between
+two saves and a confirm can only offer them as OK and Cancel -- which leaves
+the reader working out which button is the copy. So both buttons say what they
+save: **Save** and **Save as a copy**. Neither is a "no": the beat is being
+saved either way, and the only question is what gets saved. The save hands the
+question to `SharedEditDialog` and waits on a promise for the answer.
+
 The question comes at save time rather than edit time, because the save is the
 dangerous half -- the sequencer holds the edits either way -- and it is asked
 once per beat per session, since a question that arrives every time auto-save
 fires is one nobody reads. Every route to a save goes through
 `saveWorkingBeat`, so it cannot be reached by the transport and missed by the
 way-back bar.
+
+It is not asked at all when the only song playing the beat is the one on
+screen: changing it changes exactly what you are looking at, which is what you
+came to do. The notice still counts that song, because "used in" is a fact
+about the beat rather than a warning about this edit.
 
 Choosing the copy from inside a song points that song's row at the fork, clips
 and all (`setRowPattern`), and saves the song -- the swap is the whole point of

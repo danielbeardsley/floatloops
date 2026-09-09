@@ -1015,6 +1015,46 @@
 }
 
 /* Shown in the transport while there is more in the editor than on disk. */
+/* --- the shared-beat question -------------------------------------------- */
+
+.ask {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(0 0 0 / 0.6);
+}
+
+.ask__box {
+  max-width: 460px;
+  padding: 24px;
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+}
+
+.ask__title {
+  margin: 0 0 8px;
+  font-size: 19px;
+}
+
+.ask__body {
+  margin: 0 0 20px;
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* The copy sits on the right, where the bar that saves and goes back to the
+   song puts the action it recommends. */
+.ask__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 /* A standing fact rather than a warning, so it stays quieter than the
    unsaved mark sitting next to it. */
 .used-in {

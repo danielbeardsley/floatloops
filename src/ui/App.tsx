@@ -4,6 +4,7 @@ import { SequencerScreen } from './SequencerScreen'
 import { SongScreen } from './SongScreen'
 import { LibraryScreen } from './LibraryScreen'
 import { RefreshButton } from './Refresh'
+import { SharedEditDialog } from './SharedEditDialog'
 import './app.css'
 
 /**
@@ -75,6 +76,9 @@ export function App() {
             <Route path="/library" element={<LibraryScreen />} />
           </Routes>
         </main>
+
+        {/* Outside the routes: it belongs to the save, not to a screen. */}
+        <SharedEditDialog />
       </div>
     </HashRouter>
   )
