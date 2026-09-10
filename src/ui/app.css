@@ -361,6 +361,27 @@
   opacity: 0.25;
 }
 
+/*
+ * On a step you have drawn, the outline would be the row's colour on the row's
+ * colour -- invisible, and invisible at the one moment it matters most: the two
+ * beats landing on the same step is the collision being hunted for, not a
+ * detail to be swallowed by your own hit.
+ *
+ * So over a filled cell it switches to the background and firms up, reading as
+ * a notch taken out of your block rather than a line drawn around theirs. The
+ * rule the eye keeps is the same either way: solid is mine, hollow is theirs.
+ */
+.cell--on > .ghost,
+.note--on > .ghost {
+  border-color: var(--bg);
+  opacity: 0.85;
+}
+
+.cell--on > .ghost--muted,
+.note--on > .ghost--muted {
+  opacity: 0.45;
+}
+
 /* A run of ghosted steps reads as one held note, the same way a real one does:
    the inner ends lose their rounding, and the outline reaches across the grid
    gap rather than stopping at the cell. */

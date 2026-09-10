@@ -261,6 +261,7 @@ across the whole library.
 | **A muted row whispers** | It is part of what is being arranged around. Dropping it would make a beat look clear of something about to be switched back on. |
 | **A neighbour's own mute draws nothing** | A track its beat has muted makes no sound here, and a ghost of silence is a lie about what you are lining up with. |
 | **Ghosts take no pointers** | A step is drawn straight through one; the outline is never what the finger meant. |
+| **Over your own hit it inverts** | The row's colour on the row's colour is invisible, and invisible at the one moment that matters most -- landing on the same step is the collision being hunted for. Over a filled cell the outline switches to the background and reads as a notch taken out of your block. |
 | **Nothing else plays here** | Said plainly. An empty overlay reads as a bug. |
 
 It is one switch for the picture and the sound both, because a beat that looks

@@ -142,6 +142,21 @@ describe('the rest of the song, showing through', () => {
     expect(ghostIn(cellFor(KICK, 0))).toBeNull()
   })
 
+  /*
+   * The step both beats land on is the collision being looked for, so it is
+   * the last thing that should be swallowed by your own hit. The outline
+   * switches to the background colour over a filled cell; what matters here is
+   * that it is still drawn at all.
+   */
+  it('is still there under a step you have drawn yourself', () => {
+    const mine = setStep({ ...createEmptyPattern('Mine'), id: 'mine' }, KICK, 4, 1)
+    setUp({ mine, others: [beat('bass', (p) => setStep(p, KICK, 4, 1))] })
+    render(<Grid />)
+
+    expect(cellFor(KICK, 4).className).toContain('cell--on')
+    expect(ghostIn(cellFor(KICK, 4))).not.toBeNull()
+  })
+
   it('says so to a screen reader, which cannot see a hollow outline', () => {
     setUp({ others: [beat('bass', (p) => setStep(p, KICK, 4, 1))] })
     render(<Grid />)
