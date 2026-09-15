@@ -83,8 +83,26 @@ function migrateTracks(value: unknown, measures: number): Track[] {
  */
 const PITCHES_ADDED_BELOW = 4
 
-function pitchShiftFor(version: number): number {
-  return version < 3 ? PITCHES_ADDED_BELOW : 0
+/**
+ * Version 6 made the scale chromatic, which renumbered every row: pitch 5 used
+ * to be C4, the sixth note of a pentatonic scale, and is now F3, five
+ * half-tones up. This is where each old index moves to. It is indexed by the
+ * *shifted* pitch, so the version 3 fix above has to be applied first.
+ */
+const PENTATONIC_TO_CHROMATIC: readonly number[] = [
+  0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28, 31,
+]
+
+/**
+ * A saved pitch read forward into the row it means today. Anything the old
+ * scale never had comes back as -1, which is not a pitch, so the note is
+ * dropped rather than landing somewhere arbitrary.
+ */
+function migratePitch(value: unknown, version: number): number {
+  const saved = Math.round(asNumber(value, -1))
+  const shifted = version < 3 ? saved + PITCHES_ADDED_BELOW : saved
+  if (version >= 6) return shifted
+  return shifted >= 0 ? (PENTATONIC_TO_CHROMATIC[shifted] ?? -1) : -1
 }
 
 /**
@@ -93,14 +111,14 @@ function pitchShiftFor(version: number): number {
  * pattern, has no correct interpretation. Length is clamped, since a note
  * running off the end has an obvious one.
  */
-function migrateNotes(value: unknown, length: number, pitchShift: number): Note[] {
+function migrateNotes(value: unknown, length: number, version: number): Note[] {
   const source = Array.isArray(value) ? value : []
   const notes: Note[] = []
 
   for (const raw of source) {
     if (!isRecord(raw)) continue
 
-    const pitch = Math.round(asNumber(raw.pitch, -1)) + pitchShift
+    const pitch = migratePitch(raw.pitch, version)
     if (!isPitch(pitch)) continue
 
     const start = Math.floor(asNumber(raw.start, -1))
@@ -127,7 +145,7 @@ function migrateMelody(value: unknown, length: number, version: number): Melody 
     // A beat saved before there was a choice of sound was written with the
     // lead, and so is one naming a sound this build has never heard of.
     voiceId: isMelodyVoiceId(record.voiceId) ? record.voiceId : DEFAULT_MELODY_VOICE,
-    notes: migrateNotes(record.notes, length, pitchShiftFor(version)),
+    notes: migrateNotes(record.notes, length, version),
   }
 }
 

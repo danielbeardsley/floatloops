@@ -7,7 +7,7 @@ import { DEFAULT_MELODY_VOICE, isMelodyVoiceId, type MelodyVoiceId } from '../au
  * The saved-pattern format. Every change here needs a bump to PATTERN_VERSION
  * and a migration, because these objects outlive the code that wrote them.
  */
-export const PATTERN_VERSION = 5
+export const PATTERN_VERSION = 6
 
 /**
  * 0 means the step is off. Anything above is the hit's velocity, so accents

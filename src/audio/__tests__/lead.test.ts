@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { LEAD_DEFAULTS, lead, leadDuration, leadEnvelopePoints, resolveLeadParams } from '../voices/lead'
-import { PITCH_COUNT, SCALE, isPitch, pitchFreq, pitchName } from '../scale'
+import {
+  PITCH_COUNT,
+  SCALE,
+  isAccidental,
+  isPitch,
+  pitchClass,
+  pitchFreq,
+  pitchName,
+} from '../scale'
 import { MockAudioContext, asAudioContext, asAudioNode } from '../../test/mockAudioContext'
 
 describe('the scale', () => {
@@ -10,16 +18,37 @@ describe('the scale', () => {
     }
   })
 
-  it('is pentatonic, so nothing in it can clash', () => {
-    // Five notes to the octave: every note five up is double the one below it.
-    for (let i = 0; i + 5 < SCALE.length; i += 1) {
-      expect(SCALE[i + 5].freq).toBeCloseTo(SCALE[i].freq * 2, 1)
+  it('is chromatic, so every half-tone can be asked for', () => {
+    // Twelve notes to the octave: every note twelve up is double the one below.
+    for (let i = 0; i + 12 < SCALE.length; i += 1) {
+      expect(SCALE[i + 12].freq).toBeCloseTo(SCALE[i].freq * 2, 1)
     }
   })
 
-  it('spans the range the piano roll offers, low C to high G', () => {
+  it('spans three octaves, low C to high B', () => {
     expect(SCALE[0].name).toBe('C3')
-    expect(SCALE[PITCH_COUNT - 1].name).toBe('G5')
+    expect(SCALE[PITCH_COUNT - 1].name).toBe('B5')
+    expect(PITCH_COUNT).toBe(36)
+  })
+
+  it('is in tune: concert A where it belongs, and the old rows where they were', () => {
+    expect(SCALE[0].freq).toBeCloseTo(130.81, 2)
+    expect(pitchFreq(21)).toBe(440)
+    expect(pitchName(21)).toBe('A4')
+  })
+
+  it('names the black keys with sharps, and knows they are black', () => {
+    expect(pitchName(1)).toBe('C#3')
+    expect(isAccidental(1)).toBe(true)
+    expect(isAccidental(0)).toBe(false)
+  })
+
+  it('measures a pitch against whichever key is asked about', () => {
+    // D is two half-tones above C, and the root of its own key.
+    expect(pitchClass(2)).toBe(2)
+    expect(pitchClass(2, 2)).toBe(0)
+    // Below the root wraps into the octave above rather than going negative.
+    expect(pitchClass(0, 2)).toBe(10)
   })
 
   it('knows which pitches exist', () => {

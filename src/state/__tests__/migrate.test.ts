@@ -191,13 +191,54 @@ describe('migratePattern and the melody', () => {
       melody: { notes: [{ id: 'n1', pitch: 0, start: 0, length: 1 }] },
     }
     const note = migratePattern(legacy)!.melody.notes[0]
-    expect(note.pitch).toBe(4)
     expect(pitchName(note.pitch)).toBe('A3')
   })
 
   it('leaves pitches alone once they were saved against the current scale', () => {
     const migrated = withMelody({ notes: [{ pitch: 0, start: 0, length: 1 }] })
     expect(migrated.melody.notes[0].pitch).toBe(0)
+  })
+
+  it('reads pentatonic pitches onto the chromatic rows they always meant', () => {
+    // The whole old scale, note for note, against what it sounded like.
+    const pentatonic = [
+      'C3', 'D3', 'E3', 'G3', 'A3',
+      'C4', 'D4', 'E4', 'G4', 'A4',
+      'C5', 'D5', 'E5', 'G5',
+    ]
+
+    const migrated = migratePattern({
+      ...createEmptyPattern(),
+      version: 5,
+      melody: {
+        notes: pentatonic.map((_, pitch) => ({ id: `n${pitch}`, pitch, start: 0, length: 1 })),
+      },
+    })!
+
+    const byId = new Map(migrated.melody.notes.map((note) => [note.id, note]))
+    pentatonic.forEach((name, pitch) => {
+      expect(pitchName(byId.get(`n${pitch}`)!.pitch)).toBe(name)
+    })
+  })
+
+  it('keeps a pre-version-3 melody sounding right through both renumberings', () => {
+    // Pitch 1 meant C4 back when the scale began at A3: four rows up in the
+    // old numbering, and the sixth pentatonic note in the new one.
+    const legacy = {
+      ...createEmptyPattern(),
+      version: 2,
+      melody: { notes: [{ id: 'n1', pitch: 1, start: 0, length: 1 }] },
+    }
+    expect(pitchName(migratePattern(legacy)!.melody.notes[0].pitch)).toBe('C4')
+  })
+
+  it('drops a pentatonic pitch that was never on the old scale either', () => {
+    const migrated = migratePattern({
+      ...createEmptyPattern(),
+      version: 5,
+      melody: { notes: [{ pitch: 14, start: 0, length: 1 }] },
+    })!
+    expect(migrated.melody.notes).toEqual([])
   })
 
   it('ignores junk in the notes list without losing the good ones', () => {
