@@ -294,10 +294,42 @@ are remembered per device.
 ## The melody
 
 Below the drums, a piano roll -- open to begin with, and collapsible from its
-header: fourteen pitches of A minor
-pentatonic, C3 up to G5, so no combination of notes can clash. Notes have a
+header: every half-tone from C3 up to B5, thirty-six of them. Notes have a
 start and a length, snapped to the grid, which is why the melody is a list of
 `Note` objects rather than another grid of cells.
+
+### Which rows it draws
+
+Thirty-six rows is more than a kid can choose between, so the roll shows a
+**view** of the scale rather than all of it. The picker under the melody header
+offers four, and a key to move the scale ones onto:
+
+- **5 notes** -- the pentatonic rows the roll used to *be*. No two of them can
+  clash, which is why this is what a new beat opens on.
+- **8 notes** -- the seven of a major scale, the eighth being the octave again.
+- **All 12** -- every half-tone, for when the note you want is the one between.
+- **In use** -- only the rows that already have something on them.
+
+A **Just my range** checkbox closes the roll up around the notes that are
+there, top and bottom, which is how a melody written inside one octave stops
+costing three octaves of scrolling.
+
+Two rules keep a view from losing you anything. *A row holding a note is always
+drawn*, whatever the view says -- a note on a hidden row could not be moved,
+shortened or deleted, and would go on sounding from somewhere you cannot see.
+And *In use* falls back to the pentatonic rows while the beat is empty, since a
+roll with no rows at all is one you cannot write the first note into. Another
+beat's notes showing through (see Songs, below) do *not* hold a row open: they
+are not yours to edit, and a busy neighbour would undo the point of the view.
+
+The choice is a per-device preference in `preferences.ts`, not part of the
+beat. It changes what you see, never what plays -- which is the same bargain
+the collapsible sections make.
+
+The scale itself is chromatic because *that* is where the notes live; it is
+the view that keeps the clashing ones out of a beginner's way. Both used to be
+one decision, and a pitch is an index into the scale, so pattern **version 6**
+renumbers every saved note onto the row it always sounded like (`migrate.ts`).
 
 Its mute and volume sit in the section header and stay visible when the roll is
 collapsed -- the melody still plays either way, so its level has to stay
