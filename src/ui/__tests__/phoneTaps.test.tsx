@@ -66,7 +66,16 @@ beforeEach(() => {
   mock = new MockAudioContext()
   setContextFactory(() => asAudioContext(mock))
   usePatternStore.setState({ pattern: createEmptyPattern('Test'), isPlaying: false })
-  useSettingsStore.setState({ followPlayhead: true, melodyOpen: true, drumsOpen: true })
+  // Every row drawn, so a tap can land on any pitch, not just the ones the
+  // roll would pick for an empty melody.
+  useSettingsStore.setState({
+    followPlayhead: true,
+    melodyOpen: true,
+    drumsOpen: true,
+    melodyView: 'chromatic',
+    melodyKey: 0,
+    melodyNarrow: false,
+  })
   onAPhone()
 })
 

@@ -31,6 +31,22 @@ describe('loadPreferences', () => {
     expect(loadPreferences().followPlayhead).toBe(true)
   })
 
+  it('forgets a melody view this build does not have', () => {
+    window.localStorage.setItem('floatloops:preferences', '{"melodyView":"dorian"}')
+    expect(loadPreferences().melodyView).toBe('pentatonic')
+  })
+
+  it('forgets a key that is not one of the twelve', () => {
+    window.localStorage.setItem('floatloops:preferences', '{"melodyKey":13}')
+    expect(loadPreferences().melodyKey).toBe(0)
+  })
+
+  it('reads back a melody view it does have', () => {
+    window.localStorage.setItem('floatloops:preferences', '{"melodyView":"chromatic","melodyKey":7}')
+    expect(loadPreferences().melodyView).toBe('chromatic')
+    expect(loadPreferences().melodyKey).toBe(7)
+  })
+
   it('survives storage that refuses to be read', () => {
     vi.spyOn(window.localStorage, 'getItem').mockImplementation(() => {
       throw new Error('blocked')
@@ -58,6 +74,23 @@ describe('settings store', () => {
 
   it('opens the piano roll to begin with, like the drums', () => {
     expect(DEFAULT_PREFERENCES.melodyOpen).toBe(true)
+  })
+
+  it('opens on the rows that cannot clash, in C', () => {
+    expect(DEFAULT_PREFERENCES.melodyView).toBe('pentatonic')
+    expect(DEFAULT_PREFERENCES.melodyKey).toBe(0)
+    expect(DEFAULT_PREFERENCES.melodyNarrow).toBe(false)
+  })
+
+  it('remembers the rows the roll was left showing', () => {
+    useSettingsStore.getState().setMelodyView('scale')
+    useSettingsStore.getState().setMelodyKey(7)
+    useSettingsStore.getState().setMelodyNarrow(true)
+
+    const reloaded = loadPreferences()
+    expect(reloaded.melodyView).toBe('scale')
+    expect(reloaded.melodyKey).toBe(7)
+    expect(reloaded.melodyNarrow).toBe(true)
   })
 
   it('does not drop one preference when writing another', () => {

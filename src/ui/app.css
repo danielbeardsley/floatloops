@@ -751,8 +751,52 @@
   font-family: inherit;
 }
 
+/* Which rows the roll draws. Its own grid row, pinned left like the section
+   header above it, so scrolling the beat sideways leaves it in place. */
+.row-picker {
+  grid-column: 1 / -1;
+  margin-bottom: 2px;
+}
+
+.row-picker__inner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 300px;
+  padding: 0 12px 4px 8px;
+  background: var(--bg);
+}
+
+.row-picker__select {
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.row-picker__narrow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-dim);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .row__label--pitch .row__name {
   font-variant-numeric: tabular-nums;
+}
+
+/* A black key, dimmed so the white ones carry the eye down the octaves. */
+.row__label--sharp .row__name {
+  opacity: 0.6;
 }
 
 .note {

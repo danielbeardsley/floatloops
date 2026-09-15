@@ -1,6 +1,13 @@
+import { useMemo } from 'react'
 import { usePatternStore } from '../state/patternStore'
 import { useSettingsStore } from '../state/settingsStore'
-import { PITCHES_TOP_DOWN, pitchName } from '../audio/scale'
+import {
+  MELODY_VIEWS,
+  viewHasKey,
+  visiblePitches,
+  type MelodyView,
+} from '../state/melodyView'
+import { KEYS, isAccidental, pitchName } from '../audio/scale'
 import { MELODY_KIT, type MelodyVoiceId } from '../audio/melodyKit'
 import { STEPS_PER_BEAT, STEPS_PER_MEASURE } from '../audio/timing'
 import { bridgesGap, cellFill, pitchColor } from './melodyCells'
@@ -40,8 +47,21 @@ export function MelodyRows({
   const setMelodyVoice = usePatternStore((s) => s.setMelodyVoice)
   const open = useSettingsStore((s) => s.melodyOpen)
   const setMelodyOpen = useSettingsStore((s) => s.setMelodyOpen)
+  const view = useSettingsStore((s) => s.melodyView)
+  const setMelodyView = useSettingsStore((s) => s.setMelodyView)
+  const melodyKey = useSettingsStore((s) => s.melodyKey)
+  const setMelodyKey = useSettingsStore((s) => s.setMelodyKey)
+  const narrow = useSettingsStore((s) => s.melodyNarrow)
+  const setMelodyNarrow = useSettingsStore((s) => s.setMelodyNarrow)
 
   const stepIndices = Array.from({ length: shown.to - shown.from }, (_, i) => shown.from + i)
+
+  // Every note is looked at to decide this, which is cheap next to drawing the
+  // rows it decides -- but not cheap enough to redo on a playhead frame.
+  const pitches = useMemo(
+    () => visiblePitches({ view, key: melodyKey, narrow, notes: melody.notes }),
+    [view, melodyKey, narrow, melody.notes],
+  )
 
   return (
     <>
@@ -103,11 +123,65 @@ export function MelodyRows({
         </div>
       </div>
 
+      {/* The rows to draw are a view, not part of the beat, so this sits with
+          the roll rather than in the header the melody's own controls are in.
+          Hidden with the roll: there is nothing to choose rows for when none
+          are drawn. */}
+      {open ? (
+        <div className="row-picker">
+          <div className="row-picker__inner">
+            <select
+              className="row-picker__select"
+              data-passive
+              value={view}
+              onChange={(e) => setMelodyView(e.target.value as MelodyView)}
+              aria-label="Which rows to show"
+            >
+              {MELODY_VIEWS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Only the scale views have a root to move, so the key goes away
+                rather than sitting there doing nothing. */}
+            {viewHasKey(view) ? (
+              <select
+                className="row-picker__select"
+                data-passive
+                value={melodyKey}
+                onChange={(e) => setMelodyKey(Number(e.target.value))}
+                aria-label="Key"
+              >
+                {KEYS.map((name, index) => (
+                  <option key={name} value={index}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+
+            <label className="row-picker__narrow">
+              <input
+                type="checkbox"
+                data-passive
+                checked={narrow}
+                onChange={(e) => setMelodyNarrow(e.target.checked)}
+              />
+              Just my range
+            </label>
+          </div>
+        </div>
+      ) : null}
+
       {open
-        ? PITCHES_TOP_DOWN.map((pitch) => [
+        ? pitches.map((pitch) => [
             <div
               key={`pitch-${pitch}`}
-              className={`row__label row__label--pitch${melody.muted ? ' row__label--muted' : ''}`}
+              className={`row__label row__label--pitch${melody.muted ? ' row__label--muted' : ''}${
+                isAccidental(pitch) ? ' row__label--sharp' : ''
+              }`}
               style={{ ['--track-color' as string]: pitchColor(pitch) }}
             >
               <span className="row__name">{pitchName(pitch)}</span>

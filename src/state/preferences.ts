@@ -7,6 +7,14 @@
  * a browser set to block site data.
  */
 
+import {
+  DEFAULT_MELODY_KEY,
+  DEFAULT_MELODY_VIEW,
+  isMelodyKey,
+  isMelodyView,
+  type MelodyView,
+} from './melodyView'
+
 const KEY = 'floatloops:preferences'
 
 export type Preferences = {
@@ -27,6 +35,12 @@ export type Preferences = {
    * cannot hear is worse than not seeing it at all.
    */
   showOthers: boolean
+  /** Which rows of the piano roll are drawn. See melodyView.ts. */
+  melodyView: MelodyView
+  /** Root of the scale views, 0 being C. */
+  melodyKey: number
+  /** Whether the roll closes up around the notes that are there. */
+  melodyNarrow: boolean
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -35,7 +49,15 @@ export const DEFAULT_PREFERENCES: Preferences = {
   melodyOpen: true,
   drumsOpen: true,
   showOthers: true,
+  melodyView: DEFAULT_MELODY_VIEW,
+  melodyKey: DEFAULT_MELODY_KEY,
+  melodyNarrow: false,
 }
+
+/** The preferences that are plain on/off switches, which most of them are. */
+type FlagKey = {
+  [K in keyof Preferences]: Preferences[K] extends boolean ? K : never
+}[keyof Preferences]
 
 export function loadPreferences(): Preferences {
   try {
@@ -46,15 +68,21 @@ export function loadPreferences(): Preferences {
     if (typeof parsed !== 'object' || parsed === null) return DEFAULT_PREFERENCES
 
     const stored = parsed as Partial<Record<keyof Preferences, unknown>>
-    const read = (key: keyof Preferences) =>
+    const read = (key: FlagKey) =>
       typeof stored[key] === 'boolean' ? (stored[key] as boolean) : DEFAULT_PREFERENCES[key]
 
+    // Anything that is not a plain flag is checked against what it means
+    // rather than its type: a view this build has never heard of, or a key
+    // outside the octave, is a preference worth forgetting.
     return {
       autoSave: read('autoSave'),
       followPlayhead: read('followPlayhead'),
       melodyOpen: read('melodyOpen'),
       drumsOpen: read('drumsOpen'),
       showOthers: read('showOthers'),
+      melodyView: isMelodyView(stored.melodyView) ? stored.melodyView : DEFAULT_MELODY_VIEW,
+      melodyKey: isMelodyKey(stored.melodyKey) ? stored.melodyKey : DEFAULT_MELODY_KEY,
+      melodyNarrow: read('melodyNarrow'),
     }
   } catch {
     return DEFAULT_PREFERENCES

@@ -86,7 +86,16 @@ beforeEach(() => {
   resetTransport()
   resetEngine()
   setContextFactory(() => asAudioContext(new MockAudioContext()))
-  useSettingsStore.setState({ followPlayhead: true, drumsOpen: true, melodyOpen: true, showOthers: true })
+  // Every row drawn, so a ghost is judged on where it lands rather than on
+  // whether the roll happens to be showing that row.
+  useSettingsStore.setState({
+    followPlayhead: true,
+    drumsOpen: true,
+    melodyOpen: true,
+    showOthers: true,
+    melodyView: 'chromatic',
+    melodyNarrow: false,
+  })
 })
 
 afterEach(() => {
@@ -127,6 +136,18 @@ describe('the rest of the song, showing through', () => {
 
     expect(ghostIn(noteCellFor(3, 2))?.className).toContain('ghost--start')
     expect(ghostIn(noteCellFor(3, 3))?.className).toContain('ghost--end')
+  })
+
+  it('cannot show a ghost on a row the roll is not drawing', () => {
+    // Only your own notes hold a row open, so a neighbour's note on a row the
+    // view leaves out simply is not there to see. Widening the view is how you
+    // find it -- and the row it lands on is still the row it lands on.
+    useSettingsStore.setState({ melodyView: 'pentatonic', melodyKey: 0 })
+    setUp({ others: [beat('tune', (p) => addNote(p, { pitch: 3, start: 2, length: 2 }))] })
+    render(<Grid />)
+
+    expect(document.querySelector('[data-pitch="3"]')).toBeNull()
+    expect(ghostIn(cellFor(KICK, 4))).toBeNull()
   })
 
   it('shows what plays at the place you came to, not at the start of the song', () => {

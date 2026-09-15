@@ -82,7 +82,7 @@ beforeEach(() => {
     preview: null,
     isPlaying: false,
   })
-  useSettingsStore.setState({ followPlayhead: false, melodyOpen: true })
+  useSettingsStore.setState({ followPlayhead: false, melodyOpen: true, melodyView: 'chromatic' })
 })
 
 afterEach(() => {

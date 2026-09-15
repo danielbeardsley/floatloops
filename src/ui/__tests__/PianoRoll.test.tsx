@@ -58,7 +58,15 @@ beforeEach(() => {
   mock = new MockAudioContext()
   setContextFactory(() => asAudioContext(mock))
   usePatternStore.setState({ pattern: createEmptyPattern('Test'), isPlaying: false })
-  useSettingsStore.setState({ followPlayhead: true, melodyOpen: true })
+  // Every row drawn, so a test about editing notes can reach any pitch it
+  // likes. Which rows the roll picks is its own describe block, below.
+  useSettingsStore.setState({
+    followPlayhead: true,
+    melodyOpen: true,
+    melodyView: 'chromatic',
+    melodyKey: 0,
+    melodyNarrow: false,
+  })
 })
 
 afterEach(() => {
@@ -79,7 +87,7 @@ describe('the melody section', () => {
     )
   })
 
-  it('expands to a row per pitch', () => {
+  it('expands to a row per pitch shown', () => {
     useSettingsStore.setState({ melodyOpen: false })
     render(<Grid />)
     fireEvent.click(screen.getByRole('button', { name: /^melody/i }))
@@ -488,5 +496,112 @@ describe('drums and melody together', () => {
 
     expect(notes()).toEqual([])
     expect(usePatternStore.getState().pattern.tracks[0].steps[0]).toBe(1)
+  })
+})
+
+describe('which rows the roll shows', () => {
+  /** The note names down the left of the roll, top to bottom. */
+  function rowNames() {
+    return Array.from(document.querySelectorAll('.row__label--pitch .row__name')).map(
+      (label) => label.textContent,
+    )
+  }
+
+  function pickView(value: string) {
+    fireEvent.change(screen.getByLabelText('Which rows to show'), { target: { value } })
+  }
+
+  beforeEach(() => {
+    useSettingsStore.setState({ melodyView: 'pentatonic', melodyKey: 0, melodyNarrow: false })
+  })
+
+  it('opens on the five notes that cannot clash', () => {
+    render(<Grid />)
+    const names = rowNames()
+
+    expect(names).toHaveLength(15)
+    expect(names.at(0)).toBe('A5')
+    expect(names.at(-1)).toBe('C3')
+    expect(names).not.toContain('C#3')
+    expect(names).not.toContain('F3')
+  })
+
+  it('shows every half-tone when asked, and remembers it', () => {
+    render(<Grid />)
+    pickView('chromatic')
+
+    expect(rowNames()).toHaveLength(PITCH_COUNT)
+    expect(rowNames()).toContain('C#3')
+    expect(useSettingsStore.getState().melodyView).toBe('chromatic')
+  })
+
+  it('shows the seven of a scale, and moves them onto another key', () => {
+    render(<Grid />)
+    pickView('scale')
+    expect(rowNames()).toContain('F3')
+    expect(rowNames()).not.toContain('F#3')
+
+    // G major: one sharp, and it is F#.
+    fireEvent.change(screen.getByLabelText('Key'), { target: { value: '7' } })
+    expect(rowNames()).toContain('F#3')
+    expect(rowNames()).not.toContain('F3')
+    expect(useSettingsStore.getState().melodyKey).toBe(7)
+  })
+
+  it('offers no key where there is no scale to move', () => {
+    render(<Grid />)
+    expect(screen.getByLabelText('Key')).toBeTruthy()
+
+    pickView('chromatic')
+    expect(screen.queryByLabelText('Key')).toBeNull()
+  })
+
+  it('shows only the rows in use, once any are', () => {
+    usePatternStore.setState({
+      pattern: addNote(addNote(createEmptyPattern(), { pitch: 1, start: 0, length: 1 }), {
+        pitch: 13,
+        start: 4,
+        length: 1,
+      }),
+    })
+    render(<Grid />)
+    pickView('used')
+
+    expect(rowNames()).toEqual(['C#4', 'C#3'])
+  })
+
+  it('never hides a row that has a note on it', () => {
+    // C#3 is in no view of C, and a note you cannot see is one you cannot
+    // delete, move or shorten.
+    usePatternStore.setState({
+      pattern: addNote(createEmptyPattern(), { pitch: 1, start: 0, length: 1 }),
+    })
+    render(<Grid />)
+
+    expect(rowNames()).toContain('C#3')
+    expect(noteCell(1, 0)).toBeTruthy()
+  })
+
+  it('narrows to the notes already placed, and remembers that too', () => {
+    usePatternStore.setState({
+      pattern: addNote(addNote(createEmptyPattern(), { pitch: 4, start: 0, length: 1 }), {
+        pitch: 12,
+        start: 4,
+        length: 1,
+      }),
+    })
+    render(<Grid />)
+    fireEvent.click(screen.getByLabelText('Just my range'))
+
+    expect(rowNames()).toEqual(['C4', 'A3', 'G3', 'E3'])
+    expect(useSettingsStore.getState().melodyNarrow).toBe(true)
+  })
+
+  it('has nothing to narrow to while the beat is empty', () => {
+    render(<Grid />)
+    const before = rowNames()
+    fireEvent.click(screen.getByLabelText('Just my range'))
+
+    expect(rowNames()).toEqual(before)
   })
 })
