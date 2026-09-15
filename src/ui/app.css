@@ -100,6 +100,12 @@
    * two axes cost different things to scroll, so they get to be sized apart.
    */
   --row-h: var(--cell);
+  /*
+   * How big a thing you tap has to be. This is a tablet app played with
+   * fingers -- often small ones -- so every control in the grid's chrome is
+   * sized to be hit rather than to be neat.
+   */
+  --touch: 44px;
 
   flex: 1;
   min-height: 0;
@@ -298,15 +304,20 @@
   gap: 8px;
 }
 
+/*
+ * A track's mute, as big as its row can hold: the name above it and the fader
+ * beside it have to fit in one cell's height, which is what keeps this short
+ * of the touch size a section header's mute gets.
+ */
 .row__mute {
-  width: 26px;
-  height: 22px;
+  width: 34px;
+  height: 30px;
   flex: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--panel-raised);
   border: 1px solid var(--line);
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .row__mute[aria-pressed='true'] {
@@ -699,7 +710,10 @@
   /* Wider than the track column, because the toggle and the controls share it.
      The row spans the full grid and holds no cells, so there is nothing to
      overlap. */
-  width: 300px;
+  /* Capped to what is actually on screen: this is pinned to the left edge, so
+     anything past the viewport's width is out of reach rather than scrolled
+     to. */
+  width: min(430px, calc(100vw - 2 * var(--gap)));
   padding-right: 12px;
   background: var(--bg);
 }
@@ -740,15 +754,24 @@
 .section-head__voice {
   flex: none;
   /* Wide enough for the longest name in the kit, so none is cut off. */
-  width: 96px;
-  height: 22px;
-  padding: 0 4px;
-  border-radius: 6px;
+  width: 124px;
+  height: var(--touch);
+  padding: 0 8px;
+  border-radius: 10px;
   background: var(--panel-raised);
   border: 1px solid var(--line);
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: 15px;
   font-family: inherit;
+}
+
+/* A section's mute is tapped as often as anything on the screen, and unlike a
+   track's it has the room to say so. */
+.section-head__controls .row__mute {
+  width: var(--touch);
+  height: var(--touch);
+  border-radius: 10px;
+  font-size: 15px;
 }
 
 /* Which rows the roll draws. Its own grid row, pinned left like the section
@@ -764,30 +787,71 @@
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 300px;
-  padding: 0 12px 4px 8px;
+  gap: 10px;
+  /* As wide as its controls need, rather than a number to keep in step with
+     them: this row holds no cells, so nothing lines up against it. Pinned
+     left like the header above, so on a narrow screen it wraps onto a second
+     line rather than putting the checkbox out of reach. */
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--gap));
+  flex-wrap: wrap;
+  padding: 0 16px 6px 8px;
   background: var(--bg);
 }
 
 .row-picker__select {
-  height: 22px;
-  padding: 0 4px;
-  border-radius: 6px;
+  height: var(--touch);
+  padding: 0 8px;
+  border-radius: 10px;
   background: var(--panel-raised);
   border: 1px solid var(--line);
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: 15px;
   font-family: inherit;
 }
 
+/* The label is part of the target, not a caption beside it: the checkbox alone
+   is a small thing to hit, and the words double its width. */
 .row-picker__narrow {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+  min-height: var(--touch);
+  padding: 0 8px;
+  border-radius: 10px;
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: 15px;
   white-space: nowrap;
+}
+
+/* Drawn rather than left native: a 24px system checkbox is a pale slab on a
+   dark screen, and this one has to read at a glance from a tablet's distance.
+   Still a checkbox -- it is only the box that is ours. */
+.row-picker__narrow input {
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 8px;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+}
+
+.row-picker__narrow input:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* The tick, drawn as two sides of a box and tipped over onto its corner. */
+.row-picker__narrow input:checked::after {
+  content: '';
+  display: block;
+  width: 7px;
+  height: 12px;
+  margin: 2px auto 0;
+  border: solid var(--bg);
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
 }
 
 .row__label--pitch .row__name {
