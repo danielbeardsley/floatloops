@@ -249,7 +249,12 @@
   padding-right: 8px;
 }
 
+/* A button in the drum rows, where it is what mutes the track, and a plain
+   span everywhere else. Reset to the span either way, so a row reads the same
+   whether or not its name does anything. */
 .row__name {
+  padding: 0;
+  text-align: left;
   font-size: 15px;
   color: var(--track-color, var(--text));
   white-space: nowrap;
@@ -1296,8 +1301,12 @@
      * the cheaper axis to scroll -- a thumb does it without thinking -- but
      * there are two dozen rows down there, and every one made shorter is
      * another one on screen.
+     *
+     * The floor is what a name and a fader stacked need, and not a pixel of
+     * it is spare: at 34px the name was clipped through the middle, which is
+     * what took the mute button out of the row. See DrumRows.
      */
-    --row-h: 34px;
+    --row-h: 36px;
   }
 
   /*
@@ -1312,6 +1321,24 @@
 
   .grid--song .row__label {
     height: var(--row-h);
+  }
+
+  /*
+   * The name is the one thing in a row that has to stay legible -- it says
+   * which drum this is, and tapping it is how the drum goes quiet.
+   */
+  .row__label {
+    gap: 2px;
+  }
+
+  .row__name {
+    font-size: 13px;
+  }
+
+  /* Shorter than a browser draws it by default, which is most of a row here. */
+  .row__level {
+    height: 14px;
+    margin: 0;
   }
 
   /*

@@ -90,17 +90,26 @@ export function DrumRows({
                 className={`row__label${track.muted || drumsMuted ? ' row__label--muted' : ''}`}
                 style={{ ['--track-color' as string]: voice.color }}
               >
-                <span className="row__name">{voice.name}</span>
+                {/*
+                  The name is the mute. A phone's row is barely tall enough for
+                  a name and a fader, and an M button beside them squeezed the
+                  name down to an unreadable sliver -- so the name took the job
+                  of the button that was crowding it out.
+
+                  What muted looks like is unchanged: the row goes dim and
+                  strikes through, which is a plainer thing to read across
+                  eleven rows than eleven pressed buttons ever were.
+                */}
+                <button
+                  type="button"
+                  className="row__name"
+                  onClick={() => toggleMute(trackIndex)}
+                  aria-pressed={track.muted}
+                  aria-label={`${track.muted ? 'Unmute' : 'Mute'} ${voice.name}`}
+                >
+                  {voice.name}
+                </button>
                 <span className="row__controls">
-                  <button
-                    type="button"
-                    className="row__mute"
-                    onClick={() => toggleMute(trackIndex)}
-                    aria-pressed={track.muted}
-                    aria-label={`${track.muted ? 'Unmute' : 'Mute'} ${voice.name}`}
-                  >
-                    M
-                  </button>
                   <input
                     type="range"
                     className="row__level"

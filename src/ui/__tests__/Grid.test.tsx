@@ -333,10 +333,27 @@ describe('following the playhead', () => {
 })
 
 describe('track controls', () => {
-  it('mutes a track', () => {
+  /*
+   * The name is the control, rather than a button sitting next to one. A
+   * phone's row has room for a name and a fader and nothing else, and the
+   * button was taking the room the name needed to be read at all.
+   */
+  it('mutes a track by its name', () => {
     render(<Grid />)
-    fireEvent.click(screen.getByLabelText(`Mute ${KIT[0].name}`))
+    const name = screen.getByLabelText(`Mute ${KIT[0].name}`)
+    expect(name).toHaveTextContent(KIT[0].name)
+
+    fireEvent.click(name)
+
     expect(usePatternStore.getState().pattern.tracks[0].muted).toBe(true)
+    expect(screen.getByLabelText(`Unmute ${KIT[0].name}`)).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('leaves no second mute button in the row to crowd it', () => {
+    render(<Grid />)
+    // The section head keeps its own, which stops every drum at once.
+    expect(document.querySelectorAll('.row__label .row__mute')).toHaveLength(0)
+    expect(screen.getByLabelText('Mute drums')).toBeInTheDocument()
   })
 
   it('sets a track volume', () => {
