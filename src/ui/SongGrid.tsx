@@ -27,10 +27,8 @@ import type { NotePreview } from './noteEdits'
 import { NoteGrips } from './NoteGrips'
 import { usePlayhead } from './usePlayhead'
 import { useTwoFingerPan } from './useTwoFingerPan'
+import { gridMetrics } from './gridMetrics'
 import { BeatPicker } from './BeatPicker'
-
-/** Width of the sticky row column. Keep in step with --label-w in app.css. */
-const LABEL_WIDTH = 240
 
 /** Whether the next bar is where the beat starts over, so the gap stays open. */
 function nextLoops(
@@ -174,13 +172,14 @@ export function SongGrid() {
 
     const frame = root.getBoundingClientRect()
     const cell = marker.getBoundingClientRect()
+    const { labelWidth } = gridMetrics(root)
 
     // Unlike the beat grid, several bars fit on screen at once, so following
     // only scrolls when the playhead has actually left the view. Nudging the
     // grid every bar would be constant, pointless motion.
-    if (onlyIfHidden && cell.left >= frame.left + LABEL_WIDTH && cell.right <= frame.right) return
+    if (onlyIfHidden && cell.left >= frame.left + labelWidth && cell.right <= frame.right) return
 
-    root.scrollTo({ left: root.scrollLeft + (cell.left - frame.left) - LABEL_WIDTH, behavior: 'smooth' })
+    root.scrollTo({ left: root.scrollLeft + (cell.left - frame.left) - labelWidth, behavior: 'smooth' })
   }, [])
 
   /**

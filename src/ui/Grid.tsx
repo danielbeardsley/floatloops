@@ -16,15 +16,13 @@ import { MelodyRows } from './MelodyRows'
 import { useNoteEditor, type NoteTarget } from './useNoteEditor'
 import type { NotePreview, NoteShape } from './noteEdits'
 import { useSettingsStore } from '../state/settingsStore'
+import { gridMetrics } from './gridMetrics'
 import { useGhosts, usePlace } from './useGhosts'
 import { planFollow } from './followPlayhead'
 import { usePlayhead } from './usePlayhead'
 import { useStepPainter, type StepTarget } from './useStepPainter'
 import { useTwoFingerPan } from './useTwoFingerPan'
 import { useVisibleSteps } from './useVisibleSteps'
-
-/** Width of the sticky track column. Keep in step with --label-w in app.css. */
-const LABEL_WIDTH = 150
 
 export function Grid() {
   const scroller = useRef<HTMLDivElement>(null)
@@ -50,7 +48,7 @@ export function Grid() {
   // than all of them. The ruler is left whole: it is one element a measure
   // rather than two dozen a column, and keeping it means every measure marker
   // is there to be scrolled to, including the one the playhead is under.
-  const shown = useVisibleSteps(scroller, steps, LABEL_WIDTH)
+  const shown = useVisibleSteps(scroller, steps)
 
   // Reading through getState keeps these callbacks stable, so the painter is
   // not rebuilt on every edit.
@@ -195,7 +193,8 @@ export function Grid() {
     if (!root || !marker) return
 
     const offset = marker.getBoundingClientRect().left - root.getBoundingClientRect().left
-    root.scrollTo({ left: root.scrollLeft + offset - LABEL_WIDTH, behavior: 'smooth' })
+    const { labelWidth } = gridMetrics(root)
+    root.scrollTo({ left: root.scrollLeft + offset - labelWidth, behavior: 'smooth' })
   }, [])
 
   usePlayhead(scroller, isPlaying, {
