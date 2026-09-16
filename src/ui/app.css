@@ -95,6 +95,11 @@
   --label-w: 150px;
   --cell: 60px;
   --gap: 6px;
+  /*
+   * A row is as tall as a column is wide, until a phone asks otherwise. The
+   * two axes cost different things to scroll, so they get to be sized apart.
+   */
+  --row-h: var(--cell);
 
   flex: 1;
   min-height: 0;
@@ -239,7 +244,7 @@
   flex-direction: column;
   justify-content: center;
   gap: 4px;
-  height: var(--cell);
+  height: var(--row-h);
   padding-right: 8px;
 }
 
@@ -294,7 +299,7 @@
 .cell {
   position: relative;
   width: var(--cell);
-  height: var(--cell);
+  height: var(--row-h);
   border-radius: 12px;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -1262,4 +1267,79 @@
   color: var(--text);
   font-size: 13px;
   white-space: nowrap;
+}
+
+/* --- a phone -------------------------------------------------------------- */
+
+/*
+ * Everything above is sized for a tablet, which is what this was built on. A
+ * phone is roughly a third of the width and shows a third of the beat, so the
+ * whole grid goes down a size here.
+ *
+ * At the tablet's 150px track column and 60px cells, a 390px phone has room
+ * for three and a half steps of the sixteen in a measure -- three screenfuls
+ * of scrolling per bar, on the axis that is hardest to scroll. The sizes below
+ * put seven on screen, which is a beat and a half: enough to see a pattern
+ * rather than peer at it through a slot.
+ *
+ * The cut-off is where a tablet in portrait stops and a phone in landscape has
+ * not started, so a phone gets these both ways up and a tablet neither.
+ */
+@media (max-width: 640px) {
+  .grid {
+    --label-w: 96px;
+    --cell: 40px;
+    --gap: 4px;
+    /*
+     * Shorter than they are wide, which the tablet's rows are not. Vertical is
+     * the cheaper axis to scroll -- a thumb does it without thinking -- but
+     * there are two dozen rows down there, and every one made shorter is
+     * another one on screen.
+     */
+    --row-h: 34px;
+  }
+
+  /*
+   * A bar is still a bigger unit than a step, so the song grid keeps its wider
+   * columns; it just gives up the same proportion the beat grid does.
+   */
+  .grid--song {
+    --label-w: 150px;
+    --cell: 64px;
+    --row-h: 56px;
+  }
+
+  .grid--song .row__label {
+    height: var(--row-h);
+  }
+
+  /* Rounded like the tablet's cells are, rather than in the same pixels: at
+     this size a 12px radius eats most of the cell. */
+  .cell {
+    border-radius: 8px;
+  }
+
+  .note--start {
+    border-radius: 8px 0 0 8px;
+  }
+
+  .note--end {
+    border-radius: 0 8px 8px 0;
+  }
+
+  /*
+   * Two grips at the tablet's 16px would leave eight pixels of a one-step note
+   * to grab hold of the note itself by. Narrower, so the middle survives.
+   */
+  .note__grip {
+    width: 12px;
+  }
+
+  /* It is parked past the end of the beat, so every pixel of it is a pixel
+     scrolled to reach it. */
+  .grid__add {
+    width: 44px;
+    min-height: 88px;
+    font-size: 24px;
+  }
 }
