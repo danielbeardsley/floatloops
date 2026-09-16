@@ -1,4 +1,6 @@
 import { useCallback, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import { fingerScrolls, movedOff } from './phoneTaps'
+import type { Point } from './useTwoFingerPan'
 
 export type StepTarget = { trackIndex: number; stepIndex: number }
 
@@ -37,6 +39,10 @@ export type StepPainterOptions = {
  * Once the pointer is captured, every move event reports the cell the gesture
  * *started* on, so the cell actually under the finger has to be found with
  * elementFromPoint. Without that the drag silently paints nothing.
+ *
+ * On a phone there is no stroke at all: a finger there is scrolling until it
+ * lifts without having gone anywhere, and only then does it flip one step.
+ * See phoneTaps.
  */
 export function useStepPainter({
   container,
@@ -48,6 +54,8 @@ export function useStepPainter({
 }: StepPainterOptions) {
   const paintValue = useRef<number | null>(null)
   const lastCell = useRef<string | null>(null)
+  /** A phone's press, held until it turns out to be a tap rather than a scroll. */
+  const tap = useRef<{ target: StepTarget; from: Point } | null>(null)
   /** Every cell this stroke has changed, and what it was, so it can be undone. */
   const stroke = useRef<{ target: StepTarget; was: number }[]>([])
 
@@ -58,11 +66,18 @@ export function useStepPainter({
       // One stroke at a time. A second finger used to start its own, taking
       // the mode and the undo record with it -- so the first finger carried on
       // painting to the second one's rules, and the first one's cells could no
-      // longer be put back.
-      if (paintValue.current !== null) return
+      // longer be put back. One pending tap at a time, for the same reason.
+      if (paintValue.current !== null || tap.current) return
 
       const target = readTarget(event.target as Element)
       if (!target) return
+
+      // Nothing is painted yet, and the pointer is deliberately not captured:
+      // the browser needs every move of it to scroll with.
+      if (fingerScrolls(event)) {
+        tap.current = { target, from: { x: event.clientX, y: event.clientY } }
+        return
+      }
 
       const was = isOn(target) ? 1 : 0
       const value = was > 0 ? 0 : 1
@@ -79,6 +94,13 @@ export function useStepPainter({
 
   const onPointerMove = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
+      if (tap.current) {
+        // Far enough to be a scroll. The browser is running it either way;
+        // this only decides whether a step is waiting at the end of it.
+        if (movedOff(tap.current.from, { x: event.clientX, y: event.clientY })) tap.current = null
+        return
+      }
+
       if (paintValue.current === null) return
 
       const target = readTarget(document.elementFromPoint(event.clientX, event.clientY))
@@ -96,6 +118,14 @@ export function useStepPainter({
 
   const endPaint = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
+      const pending = tap.current
+      if (pending) {
+        tap.current = null
+        const was = isOn(pending.target) ? 1 : 0
+        onPaint(pending.target, was > 0 ? 0 : 1)
+        return
+      }
+
       if (paintValue.current === null) return
       paintValue.current = null
       lastCell.current = null
@@ -103,7 +133,20 @@ export function useStepPainter({
       container.current?.releasePointerCapture?.(event.pointerId)
       onPaintEnd?.()
     },
-    [container, onPaintEnd],
+    [container, isOn, onPaint, onPaintEnd],
+  )
+
+  /**
+   * The browser has taken the gesture to scroll with, so the press it began
+   * with was never a tap. Painting, where it is still possible, is finished
+   * rather than dropped: a finger lifted off the screen still meant its cells.
+   */
+  const onPointerCancel = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      tap.current = null
+      endPaint(event)
+    },
+    [endPaint],
   )
 
   /**
@@ -112,6 +155,7 @@ export function useStepPainter({
    * on was never meant to be painted.
    */
   const abort = useCallback(() => {
+    tap.current = null
     if (paintValue.current === null) return
 
     for (let i = stroke.current.length - 1; i >= 0; i -= 1) {
@@ -130,6 +174,6 @@ export function useStepPainter({
     onPointerDown,
     onPointerMove,
     onPointerUp: endPaint,
-    onPointerCancel: endPaint,
+    onPointerCancel,
   }
 }

@@ -113,7 +113,8 @@
    * pan-x here, nothing inside the grid could scroll vertically however it was
    * marked -- not the row labels, not the ruler, not the empty space. The cells
    * still opt out entirely (see .cell) so a one-finger drag paints; everything
-   * around them pans.
+   * around them pans. On a phone the cells opt back in -- see the block at the
+   * foot of this file.
    */
   touch-action: pan-x pan-y;
   overscroll-behavior-x: contain;
@@ -1313,9 +1314,15 @@
     height: var(--row-h);
   }
 
-  /* Rounded like the tablet's cells are, rather than in the same pixels: at
-     this size a 12px radius eats most of the cell. */
+  /*
+   * The tablet gives the cells to the painter and leaves the scrolling to two
+   * fingers; a phone does the opposite. One finger anywhere on the grid scrolls
+   * it, and the grid takes what is left, which is the tap. See phoneTaps.
+   */
   .cell {
+    touch-action: pan-x pan-y;
+    /* Rounded like the tablet's cells are, rather than in the same pixels: at
+       this size a 12px radius eats most of the cell. */
     border-radius: 8px;
   }
 
@@ -1328,11 +1335,16 @@
   }
 
   /*
-   * Two grips at the tablet's 16px would leave eight pixels of a one-step note
-   * to grab hold of the note itself by. Narrower, so the middle survives.
+   * The one place on the grid that still drags, because dragging is the only
+   * way to say how long a note is.
+   *
+   * Two of them at the tablet's 16px would leave eight pixels of a one-step
+   * note to take hold of the note itself by, so they are narrower here and the
+   * middle survives.
    */
   .note__grip {
     width: 12px;
+    touch-action: none;
   }
 
   /* It is parked past the end of the beat, so every pixel of it is a pixel

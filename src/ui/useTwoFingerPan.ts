@@ -1,4 +1,5 @@
 import { useCallback, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import { fingerScrolls } from './phoneTaps'
 
 export type Point = { x: number; y: number }
 
@@ -45,7 +46,8 @@ export type TwoFingerPanOptions = {
  *
  * It engages only when the first finger came down on a cell. Everywhere else
  * the browser is already panning, and a second panner on top of it would move
- * the grid twice as fast.
+ * the grid twice as fast. On a phone that is everywhere, cells included, so
+ * this stands down entirely there and the browser has the whole grid.
  *
  * There is no inertia: this moves the scroll offsets directly, so it stops
  * when the fingers do. A flick that coasts would mean reimplementing what the
@@ -59,6 +61,7 @@ export function useTwoFingerPan({ container, onStart, onEnd }: TwoFingerPanOptio
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
       const first = points.current.size === 0
+      if (first && fingerScrolls(event)) return
       if (first && !(event.target as Element).closest?.('.cell')) return
 
       points.current.set(event.pointerId, { x: event.clientX, y: event.clientY })

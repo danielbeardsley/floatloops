@@ -1,4 +1,6 @@
 import { useCallback, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import { fingerScrolls, movedOff } from './phoneTaps'
+import type { Point } from './useTwoFingerPan'
 import {
   applyEdit,
   draftFrom,
@@ -99,6 +101,11 @@ type Gesture =
  * Edits are previewed and committed on release rather than applied as the
  * finger moves: dragging across a neighbouring note would otherwise consume it
  * on the way past, with no way back.
+ *
+ * On a phone all of that narrows to the grips. A press anywhere else is a
+ * finger scrolling until it lifts where it landed, and then it means what a
+ * press that never moved has always meant: a note where there was none, and
+ * none where there was a note. See phoneTaps.
  */
 export function useNoteEditor({
   container,
@@ -113,6 +120,8 @@ export function useNoteEditor({
   onRemove,
 }: NoteEditorOptions) {
   const gesture = useRef<Gesture | null>(null)
+  /** A phone's press, held until it turns out to be a tap rather than a scroll. */
+  const tap = useRef<{ target: NoteTarget; from: Point } | null>(null)
 
   const publish = useCallback(
     (next: Gesture | null) => {
@@ -133,7 +142,7 @@ export function useNoteEditor({
     (event: ReactPointerEvent<HTMLElement>) => {
       // One gesture at a time, for the same reason the painter takes one
       // stroke: a second finger would silently replace the note being drawn.
-      if (gesture.current) return
+      if (gesture.current || tap.current) return
 
       // A control drawn inside a cell means itself, not the cell under it.
       // The gesture layer owns every press on the grid, so opting out has to
@@ -144,6 +153,17 @@ export function useNoteEditor({
       const target = readNoteTarget(event.target as Element, lane)
       if (!target) return
 
+      const grip = readGrip(event.target as Element)
+
+      // Everything but a grip goes back to the browser to scroll with, so the
+      // pointer is left uncaptured and nothing is drawn until it lifts. A grip
+      // still drags: it is how a note gets longer, and there is no tap that
+      // says the same thing.
+      if (grip === 'body' && fingerScrolls(event)) {
+        tap.current = { target, from: { x: event.clientX, y: event.clientY } }
+        return
+      }
+
       container.current?.setPointerCapture?.(event.pointerId)
 
       const existing = noteUnder(target)
@@ -151,7 +171,7 @@ export function useNoteEditor({
         publish({
           kind: 'edit',
           id: existing.id,
-          mode: editModeFor(existing.role, readGrip(event.target as Element)),
+          mode: editModeFor(existing.role, grip),
           origin: existing.shape,
           grabStep: target.stepIndex,
           shape: existing.shape,
@@ -175,6 +195,12 @@ export function useNoteEditor({
 
   const onPointerMove = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
+      if (tap.current) {
+        // Far enough to be a scroll, which the browser is already running.
+        if (movedOff(tap.current.from, { x: event.clientX, y: event.clientY })) tap.current = null
+        return
+      }
+
       const current = gesture.current
       if (!current) return
 
@@ -219,6 +245,25 @@ export function useNoteEditor({
 
   const endGesture = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
+      const pending = tap.current
+      if (pending) {
+        tap.current = null
+        const existing = noteUnder(pending.target)
+        if (existing) {
+          onRemove(existing.id)
+          return
+        }
+        onDraw(
+          draftFrom(
+            pending.target.pitch,
+            pending.target.stepIndex,
+            pending.target.stepIndex,
+            minDraw?.(pending.target.pitch) ?? 1,
+          ),
+        )
+        return
+      }
+
       const current = gesture.current
       if (!current) return
 
@@ -234,7 +279,20 @@ export function useNoteEditor({
       if (!current.moved) onRemove(current.id)
       else onEdit(current.id, current.shape)
     },
-    [container, onDraw, onEdit, onRemove, publish],
+    [container, minDraw, noteUnder, onDraw, onEdit, onRemove, publish],
+  )
+
+  /**
+   * The browser has taken the gesture to scroll with, so the press it began
+   * with was never a tap. A grip drag is still committed, exactly as it is on
+   * a lifted finger: it meant the note it was dragging.
+   */
+  const onPointerCancel = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      tap.current = null
+      endGesture(event)
+    },
+    [endGesture],
   )
 
   /**
@@ -243,6 +301,7 @@ export function useNoteEditor({
    * second finger arriving means a scroll, and never meant a note at all.
    */
   const abort = useCallback(() => {
+    tap.current = null
     if (gesture.current) publish(null)
   }, [publish])
 
@@ -251,6 +310,6 @@ export function useNoteEditor({
     onPointerDown,
     onPointerMove,
     onPointerUp: endGesture,
-    onPointerCancel: endGesture,
+    onPointerCancel,
   }
 }
