@@ -1292,6 +1292,127 @@
  * not started, so a phone gets these both ways up and a tablet neither.
  */
 @media (max-width: 640px) {
+  /*
+   * The bars above the grid are tablet rows laid end to end, and on a phone
+   * they run off the right edge -- taking the nav's last link, Refresh and the
+   * whole tempo slider with them. Nothing in them can be dropped, so they
+   * shrink to their content and wrap instead.
+   */
+  .app__bar {
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .app__title {
+    font-size: 13px;
+    letter-spacing: 0.1em;
+  }
+
+  .app__nav {
+    gap: 2px;
+  }
+
+  .app__link {
+    padding: 6px 10px;
+  }
+
+  /* The glyph is the button. Its name is still there for anyone who cannot
+     see it, read off the text that is only hidden from view. */
+  .app__refresh {
+    padding: 6px 10px;
+  }
+
+  .app__refresh-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /*
+   * Two rows: the buttons, then the tempo. The name takes whatever width the
+   * buttons leave. The marks wrap down beside the tempo, which has the room to
+   * give them.
+   */
+  .transport {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .transport__play {
+    min-width: 72px;
+    padding: 10px 14px;
+    font-size: 16px;
+  }
+
+  .transport__name {
+    flex: 1 1 80px;
+    width: auto;
+    padding: 10px;
+    font-size: 16px;
+  }
+
+  .transport__save {
+    min-width: 0;
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+
+  .transport__auto {
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  .transport__tempo {
+    flex: 1 1 200px;
+    gap: 10px;
+  }
+
+  /* The readout says "bpm" right beside it, which is all the label did. */
+  .transport__tempo-label {
+    display: none;
+  }
+
+  .transport__tempo input {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  .transport__bpm {
+    min-width: 64px;
+    text-align: right;
+  }
+
+  /*
+   * The way back. Everything in it says something, so it wraps rather than
+   * hides; the buttons keep a row of their own at the bottom, where a thumb
+   * finds them.
+   */
+  .in-song {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .in-song__what {
+    white-space: normal;
+  }
+
+  .in-song__actions {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+  }
+
+  .in-song__actions .button {
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+
   .grid {
     --label-w: 96px;
     --cell: 40px;
@@ -1380,5 +1501,29 @@
     width: 44px;
     min-height: 88px;
     font-size: 24px;
+  }
+}
+
+/*
+ * The smallest phones still in hands. The nav and Refresh are what the bar is
+ * for, and with the name beside them Refresh goes off the edge -- so the name
+ * gives way, left for anyone who cannot see the bar anyway.
+ */
+@media (max-width: 359px) {
+  .app__title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .app__nav {
+    margin-left: 0;
+  }
+
+  .app__refresh {
+    margin-left: auto;
   }
 }

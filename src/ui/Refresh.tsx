@@ -24,7 +24,7 @@ export function RefreshButton() {
       <span className="app__refresh-glyph" aria-hidden="true">
         ↻
       </span>
-      Refresh
+      <span className="app__refresh-label">Refresh</span>
     </button>
   )
 }
