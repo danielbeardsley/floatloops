@@ -152,6 +152,9 @@
   left: 0;
   z-index: 3;
   background: var(--bg);
+  /* Over the grid's padding on every side, which a pin stops short of -- see
+     .row__label. */
+  box-shadow: 0 0 0 var(--gap) var(--bg);
 }
 
 .follow {
@@ -176,6 +179,12 @@
   left: 0;
   z-index: 2;
   background: var(--bg);
+  /*
+   * A pin stops at the inside of the grid's padding, not at its edge, so the
+   * cells passing under the column showed again in the strip between it and
+   * the screen's edge. The column covers that strip too.
+   */
+  box-shadow: calc(-1 * var(--gap)) 0 var(--bg);
 }
 
 /*
@@ -214,6 +223,22 @@
   background: var(--panel);
   border: 1px solid var(--line);
   touch-action: pan-x pan-y;
+}
+
+/*
+ * The strip above it, out to the grid's edge, which the rows scrolling up
+ * showed through for the reason the track column's did -- see .row__label.
+ * Not a shadow, which would take the ruler's rounding and leave the corners
+ * open, and wide enough to close the gap to the next measure as well.
+ */
+.ruler__measure::before {
+  content: '';
+  position: absolute;
+  top: calc(-1px - var(--gap));
+  left: -1px;
+  right: calc(-1px - var(--gap));
+  height: var(--gap);
+  background: var(--bg);
 }
 
 .ruler__jump {
