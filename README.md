@@ -367,8 +367,8 @@ measure: the copy goes in straight after it and the later bars slide along. A
 melody note held over into the next bar is cut at the bar line in the original
 and kept whole in the copy, since the copy is now what leads into that bar. The
 `⧉` above the `+` at the end of the grid does the same for the whole beat,
-doubling its length; it sticks to the top, as the ruler does, because the `+`
-runs the grid's full height.
+doubling its length. The pair are small and stick to the top, as the ruler does,
+so they stay in reach however far down the grid is scrolled.
 
 Scrolling has two ways in, because the cells cannot be one of them:
 

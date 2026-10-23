@@ -477,26 +477,26 @@
 }
 
 /*
- * The beat's end: duplicate-the-beat above add-a-measure. The duplicate sticks
- * to the top as the ruler does, since the add button runs the grid's full
- * height and the top of it scrolls away.
+ * The beat's end: duplicate-the-beat above add-a-measure, a small pair that
+ * sticks to the top as the ruler does rather than running the grid's full
+ * height, where a tall grid scrolls its middle out of reach.
  */
 .grid__ends {
   flex: none;
-  align-self: stretch;
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: var(--gap);
 }
 
 .grid__ends .grid__add {
-  flex: 1;
+  min-height: 0;
+  height: 44px;
 }
 
 .grid__double {
-  position: sticky;
-  top: 0;
-  z-index: 1;
   width: 64px;
   height: 44px;
   border-radius: var(--radius);
@@ -1676,6 +1676,10 @@
   .grid__double {
     width: 44px;
     font-size: 18px;
+  }
+
+  .grid__ends .grid__add {
+    min-height: 0;
   }
 }
 
