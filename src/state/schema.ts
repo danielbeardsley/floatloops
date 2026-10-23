@@ -248,6 +248,46 @@ export function canRemoveMeasure(pattern: Pattern): boolean {
   return pattern.measures > 1
 }
 
+/**
+ * Plays one measure twice: a copy goes in straight after it, and every measure
+ * after that slides along to make room -- the reverse of removeMeasure.
+ *
+ * A note held over into the next measure is the one awkward case. The copy is
+ * now what leads into that measure, so the copy keeps the whole note and the
+ * original is cut at the bar line, where it would otherwise run on into the
+ * copy's opening steps. Bar, bar, next bar sounds as it did.
+ */
+export function duplicateMeasure(pattern: Pattern, measureIndex: number): Pattern {
+  if (!canAddMeasure(pattern)) return pattern
+  if (measureIndex < 0 || measureIndex >= pattern.measures) return pattern
+
+  const start = measureIndex * STEPS_PER_MEASURE
+  const end = start + STEPS_PER_MEASURE
+
+  const tracks = pattern.tracks.map((track) => ({
+    ...track,
+    steps: [...track.steps.slice(0, end), ...track.steps.slice(start)],
+  }))
+
+  const copies = pattern.melody.notes
+    .filter((note) => note.start >= start && note.start < end)
+    .map((note) => ({ ...note, id: createId(), start: note.start + STEPS_PER_MEASURE }))
+
+  const notes = pattern.melody.notes.map((note) => {
+    if (note.start >= end) return { ...note, start: note.start + STEPS_PER_MEASURE }
+    if (note.start >= start && note.start + note.length > end) {
+      return { ...note, length: end - note.start }
+    }
+    return note
+  })
+
+  return revise(pattern, {
+    measures: pattern.measures + 1,
+    tracks,
+    melody: { ...pattern.melody, notes: [...notes, ...copies] },
+  })
+}
+
 /** Whether a measure holds anything, so an empty one can be dropped silently. */
 export function measureHasHits(pattern: Pattern, measureIndex: number): boolean {
   const start = measureIndex * STEPS_PER_MEASURE

@@ -254,7 +254,8 @@
   letter-spacing: 0.1em;
 }
 
-.ruler__remove {
+.ruler__remove,
+.ruler__duplicate {
   width: 24px;
   height: 20px;
   border-radius: 6px;
@@ -264,7 +265,9 @@
 }
 
 .ruler__remove:hover,
-.ruler__remove:focus-visible {
+.ruler__remove:focus-visible,
+.ruler__duplicate:hover,
+.ruler__duplicate:focus-visible {
   background: var(--accent-dim);
   color: var(--text);
 }

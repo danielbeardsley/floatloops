@@ -57,6 +57,7 @@ export type PatternStore = {
   setTrackLevel: (trackIndex: number, level: number) => void
   addMeasure: () => void
   removeMeasure: (measureIndex: number) => void
+  duplicateMeasure: (measureIndex: number) => void
   addNote: (draft: edit.NoteDraft) => void
   updateNote: (id: string, draft: edit.NoteDraft) => void
   removeNote: (id: string) => void
@@ -97,6 +98,8 @@ export const usePatternStore = create<PatternStore>()((set) => ({
   addMeasure: () => set((s) => ({ pattern: edit.addMeasure(s.pattern) })),
   removeMeasure: (measureIndex) =>
     set((s) => ({ pattern: edit.removeMeasure(s.pattern, measureIndex) })),
+  duplicateMeasure: (measureIndex) =>
+    set((s) => ({ pattern: edit.duplicateMeasure(s.pattern, measureIndex) })),
   addNote: (draft) => set((s) => ({ pattern: edit.addNote(s.pattern, draft) })),
   updateNote: (id, draft) => set((s) => ({ pattern: edit.updateNote(s.pattern, id, draft) })),
   removeNote: (id) => set((s) => ({ pattern: edit.removeNote(s.pattern, id) })),

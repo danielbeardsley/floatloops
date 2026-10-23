@@ -5,7 +5,7 @@ import { readTarget } from '../useStepPainter'
 import { usePatternStore } from '../../state/patternStore'
 import { resetTransport } from '../../state/transport'
 import { resetEngine, setContextFactory } from '../../audio/context'
-import { createEmptyPattern, demoPattern, isStepOn } from '../../state/schema'
+import { MEASURE_LIMIT, createEmptyPattern, demoPattern, isStepOn } from '../../state/schema'
 import { loadPreferences } from '../../state/preferences'
 import { STEPS_PER_MEASURE } from '../../audio/timing'
 import { KIT } from '../../audio/kit'
@@ -307,6 +307,31 @@ describe('removing a measure', () => {
     fireEvent.click(screen.getByLabelText('Remove measure 1'))
 
     expect(isStepOn(usePatternStore.getState().pattern.tracks[0], 3)).toBe(true)
+  })
+})
+
+describe('duplicating a measure', () => {
+  it('offers a duplicate even on a single measure', () => {
+    render(<Grid />)
+    expect(screen.getByLabelText('Duplicate measure 1')).toBeInTheDocument()
+  })
+
+  it('puts a copy straight after the measure', () => {
+    render(<Grid />)
+    fireEvent.pointerDown(cellFor(0, 3))
+    fireEvent.pointerUp(cellFor(0, 3))
+    fireEvent.click(screen.getByLabelText('Duplicate measure 1'))
+
+    const pattern = usePatternStore.getState().pattern
+    expect(pattern.measures).toBe(2)
+    expect(isStepOn(pattern.tracks[0], STEPS_PER_MEASURE + 3)).toBe(true)
+    expect(screen.getByLabelText('Duplicate measure 2')).toBeInTheDocument()
+  })
+
+  it('is not offered at the measure limit', () => {
+    usePatternStore.setState({ pattern: createEmptyPattern('Huge', MEASURE_LIMIT) })
+    render(<Grid />)
+    expect(screen.queryByLabelText(/^Duplicate measure/)).not.toBeInTheDocument()
   })
 })
 

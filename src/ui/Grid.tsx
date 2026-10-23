@@ -226,6 +226,12 @@ export function Grid() {
     shownMeasure.current = null
   }, [])
 
+  const onDuplicateMeasure = useCallback((measureIndex: number) => {
+    usePatternStore.getState().duplicateMeasure(measureIndex)
+    // Every measure after the copy has moved along; let it re-follow.
+    shownMeasure.current = null
+  }, [])
+
   const measures = Array.from({ length: pattern.measures }, (_, i) => i)
 
   return (
@@ -267,6 +273,17 @@ export function Grid() {
               >
                 {measure + 1}
               </button>
+              {canAddMeasure(pattern) ? (
+                <button
+                  type="button"
+                  className="ruler__duplicate"
+                  onClick={() => onDuplicateMeasure(measure)}
+                  aria-label={`Duplicate measure ${measure + 1}`}
+                  title={`Play measure ${measure + 1} twice`}
+                >
+                  &#x29C9;
+                </button>
+              ) : null}
               {canRemoveMeasure(pattern) ? (
                 <button
                   type="button"

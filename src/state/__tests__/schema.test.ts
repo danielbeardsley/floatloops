@@ -8,6 +8,7 @@ import {
   canRemoveMeasure,
   createEmptyPattern,
   demoPattern,
+  duplicateMeasure,
   isStepOn,
   measureHasHits,
   noteAt,
@@ -230,6 +231,97 @@ describe('removing a measure', () => {
   it('leaves the original pattern untouched', () => {
     const before = marked(2)
     removeMeasure(before, 0)
+    expect(before.measures).toBe(2)
+  })
+})
+
+describe('duplicating a measure', () => {
+  /** Marks step 0 of each measure so the copies can be told apart. */
+  function marked(measures: number) {
+    let pattern = createEmptyPattern()
+    for (let i = 1; i < measures; i += 1) pattern = addMeasure(pattern)
+    for (let m = 0; m < measures; m += 1) {
+      pattern = setStep(pattern, 0, m * STEPS_PER_MEASURE, (m + 1) / 10)
+    }
+    return pattern
+  }
+
+  it('lengthens every track by one measure', () => {
+    const longer = duplicateMeasure(marked(2), 0)
+    expect(longer.measures).toBe(3)
+    for (const track of longer.tracks) {
+      expect(track.steps).toHaveLength(3 * STEPS_PER_MEASURE)
+    }
+  })
+
+  it('puts the copy straight after the original and slides the rest along', () => {
+    const steps = duplicateMeasure(marked(3), 1).tracks[0].steps
+    expect(steps[0]).toBeCloseTo(0.1)
+    expect(steps[STEPS_PER_MEASURE]).toBeCloseTo(0.2)
+    expect(steps[2 * STEPS_PER_MEASURE]).toBeCloseTo(0.2)
+    expect(steps[3 * STEPS_PER_MEASURE]).toBeCloseTo(0.3)
+  })
+
+  it('can duplicate the last measure', () => {
+    const steps = duplicateMeasure(marked(2), 1).tracks[0].steps
+    expect(steps[2 * STEPS_PER_MEASURE]).toBeCloseTo(0.2)
+  })
+
+  it('copies the notes that start in the measure, under new ids', () => {
+    const p = addNote(createEmptyPattern(), { pitch: 2, start: 3, length: 2 })
+    const notes = duplicateMeasure(p, 0).melody.notes
+    expect(notes.map((n) => n.start).sort((a, b) => a - b)).toEqual([3, STEPS_PER_MEASURE + 3])
+    expect(new Set(notes.map((n) => n.id)).size).toBe(2)
+  })
+
+  it('slides later notes along by a measure', () => {
+    const p = addNote(addMeasure(createEmptyPattern()), {
+      pitch: 1,
+      start: STEPS_PER_MEASURE + 3,
+      length: 2,
+    })
+    const notes = duplicateMeasure(p, 0).melody.notes
+    expect(notes).toHaveLength(1)
+    expect(notes[0].start).toBe(2 * STEPS_PER_MEASURE + 3)
+  })
+
+  it('lets the copy carry a held note on into the next measure', () => {
+    const p = addNote(addMeasure(createEmptyPattern()), {
+      pitch: 1,
+      start: STEPS_PER_MEASURE - 2,
+      length: 6,
+    })
+    const notes = duplicateMeasure(p, 0).melody.notes
+    const [original, copy] = [...notes].sort((a, b) => a.start - b.start)
+    expect(original).toMatchObject({ start: STEPS_PER_MEASURE - 2, length: 2 })
+    expect(copy).toMatchObject({ start: 2 * STEPS_PER_MEASURE - 2, length: 6 })
+  })
+
+  it('leaves a note held over from the measure before alone', () => {
+    const p = addNote(addMeasure(createEmptyPattern()), {
+      pitch: 1,
+      start: STEPS_PER_MEASURE - 2,
+      length: 6,
+    })
+    const notes = duplicateMeasure(p, 1).melody.notes
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toMatchObject({ start: STEPS_PER_MEASURE - 2, length: 6 })
+  })
+
+  it('refuses at the measure limit', () => {
+    const huge = createEmptyPattern('Huge', MEASURE_LIMIT)
+    expect(duplicateMeasure(huge, 0)).toBe(huge)
+  })
+
+  it('ignores a measure that does not exist', () => {
+    const two = marked(2)
+    expect(duplicateMeasure(two, 9)).toBe(two)
+    expect(duplicateMeasure(two, -1)).toBe(two)
+  })
+
+  it('leaves the original pattern untouched', () => {
+    const before = marked(2)
+    duplicateMeasure(before, 0)
     expect(before.measures).toBe(2)
   })
 })

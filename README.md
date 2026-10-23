@@ -362,7 +362,10 @@ means they cannot also pan the grid. The **measure ruler** above the grid is wha
 scrolls it -- drag it, or tap a measure number to jump there. Each measure also
 carries a `×` that removes it, which closes the gap rather than truncating from
 the end, so dropping bar 2 of 4 leaves bars 1, 3 and 4 intact. It only asks for
-confirmation when the measure has something in it.
+confirmation when the measure has something in it. Beside it, `⧉` duplicates the
+measure: the copy goes in straight after it and the later bars slide along. A
+melody note held over into the next bar is cut at the bar line in the original
+and kept whole in the copy, since the copy is now what leads into that bar.
 
 Scrolling has two ways in, because the cells cannot be one of them:
 
