@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent }
 import { usePatternStore } from '../state/patternStore'
 import {
   canAddMeasure,
+  canDuplicateBeat,
   canRemoveMeasure,
   isStepOn,
   measureHasHits,
@@ -32,6 +33,7 @@ export function Grid() {
   const pattern = usePatternStore((s) => s.pattern)
   const isPlaying = usePatternStore((s) => s.isPlaying)
   const addMeasure = usePatternStore((s) => s.addMeasure)
+  const duplicateBeat = usePatternStore((s) => s.duplicateBeat)
   const followPlayhead = useSettingsStore((s) => s.followPlayhead)
   const setFollowPlayhead = useSettingsStore((s) => s.setFollowPlayhead)
   const showOthers = useSettingsStore((s) => s.showOthers)
@@ -314,16 +316,28 @@ export function Grid() {
           />
         </div>
 
-        <button
-          type="button"
-          className="grid__add"
-          onClick={addMeasure}
-          disabled={!canAddMeasure(pattern)}
-          aria-label="Add a measure"
-          title="Add a measure"
-        >
-          +
-        </button>
+        <div className="grid__ends">
+          <button
+            type="button"
+            className="grid__double"
+            onClick={duplicateBeat}
+            disabled={!canDuplicateBeat(pattern)}
+            aria-label="Duplicate the whole beat"
+            title="Duplicate the whole beat"
+          >
+            &#x29C9;
+          </button>
+          <button
+            type="button"
+            className="grid__add"
+            onClick={addMeasure}
+            disabled={!canAddMeasure(pattern)}
+            aria-label="Add a measure"
+            title="Add a measure"
+          >
+            +
+          </button>
+        </div>
       </div>
     </div>
   )

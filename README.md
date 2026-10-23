@@ -365,7 +365,10 @@ the end, so dropping bar 2 of 4 leaves bars 1, 3 and 4 intact. It only asks for
 confirmation when the measure has something in it. Beside it, `⧉` duplicates the
 measure: the copy goes in straight after it and the later bars slide along. A
 melody note held over into the next bar is cut at the bar line in the original
-and kept whole in the copy, since the copy is now what leads into that bar.
+and kept whole in the copy, since the copy is now what leads into that bar. The
+`⧉` above the `+` at the end of the grid does the same for the whole beat,
+doubling its length; it sticks to the top, as the ruler does, because the `+`
+runs the grid's full height.
 
 Scrolling has two ways in, because the cells cannot be one of them:
 

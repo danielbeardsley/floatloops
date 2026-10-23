@@ -476,6 +476,40 @@
   opacity: 0.35;
 }
 
+/*
+ * The beat's end: duplicate-the-beat above add-a-measure. The duplicate sticks
+ * to the top as the ruler does, since the add button runs the grid's full
+ * height and the top of it scrolls away.
+ */
+.grid__ends {
+  flex: none;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.grid__ends .grid__add {
+  flex: 1;
+}
+
+.grid__double {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  width: 64px;
+  height: 44px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px dashed var(--line);
+  color: var(--text-dim);
+  font-size: 22px;
+}
+
+.grid__double:disabled {
+  opacity: 0.35;
+}
+
 /* --- navigation ---------------------------------------------------------- */
 
 .app__nav {
@@ -1637,6 +1671,11 @@
     width: 44px;
     min-height: 88px;
     font-size: 24px;
+  }
+
+  .grid__double {
+    width: 44px;
+    font-size: 18px;
   }
 }
 

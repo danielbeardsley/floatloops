@@ -335,6 +335,26 @@ describe('duplicating a measure', () => {
   })
 })
 
+describe('duplicating the whole beat', () => {
+  it('doubles the beat, playing it through twice', () => {
+    render(<Grid />)
+    fireEvent.click(screen.getByLabelText('Add a measure'))
+    fireEvent.pointerDown(cellFor(0, STEPS_PER_MEASURE + 3))
+    fireEvent.pointerUp(cellFor(0, STEPS_PER_MEASURE + 3))
+    fireEvent.click(screen.getByLabelText('Duplicate the whole beat'))
+
+    const pattern = usePatternStore.getState().pattern
+    expect(pattern.measures).toBe(4)
+    expect(isStepOn(pattern.tracks[0], 3 * STEPS_PER_MEASURE + 3)).toBe(true)
+  })
+
+  it('is disabled when doubling would pass the measure limit', () => {
+    usePatternStore.setState({ pattern: createEmptyPattern('Big', MEASURE_LIMIT / 2 + 1) })
+    render(<Grid />)
+    expect(screen.getByLabelText('Duplicate the whole beat')).toBeDisabled()
+  })
+})
+
 describe('following the playhead', () => {
   it('is on to begin with', () => {
     render(<Grid />)

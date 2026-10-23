@@ -7,7 +7,9 @@ import {
   canAddMeasure,
   canRemoveMeasure,
   createEmptyPattern,
+  canDuplicateBeat,
   demoPattern,
+  duplicateBeat,
   duplicateMeasure,
   isStepOn,
   measureHasHits,
@@ -323,6 +325,44 @@ describe('duplicating a measure', () => {
     const before = marked(2)
     duplicateMeasure(before, 0)
     expect(before.measures).toBe(2)
+  })
+})
+
+describe('duplicating the whole beat', () => {
+  it('doubles the length of every track', () => {
+    const doubled = duplicateBeat(addMeasure(createEmptyPattern()))
+    expect(doubled.measures).toBe(4)
+    for (const track of doubled.tracks) {
+      expect(track.steps).toHaveLength(4 * STEPS_PER_MEASURE)
+    }
+  })
+
+  it('plays the drums through twice', () => {
+    const p = setStep(addMeasure(createEmptyPattern()), 2, STEPS_PER_MEASURE + 5, 0.7)
+    const steps = duplicateBeat(p).tracks[2].steps
+    expect(steps[STEPS_PER_MEASURE + 5]).toBeCloseTo(0.7)
+    expect(steps[3 * STEPS_PER_MEASURE + 5]).toBeCloseTo(0.7)
+  })
+
+  it('copies every note a beat along, under new ids', () => {
+    const p = addNote(createEmptyPattern(), { pitch: 2, start: 14, length: 2 })
+    const notes = duplicateBeat(p).melody.notes
+    expect(notes.map((n) => n.start)).toEqual([14, STEPS_PER_MEASURE + 14])
+    expect(notes.every((n) => n.length === 2)).toBe(true)
+    expect(new Set(notes.map((n) => n.id)).size).toBe(2)
+  })
+
+  it('refuses when doubling would pass the measure limit', () => {
+    const big = createEmptyPattern('Big', MEASURE_LIMIT / 2 + 1)
+    expect(canDuplicateBeat(big)).toBe(false)
+    expect(duplicateBeat(big)).toBe(big)
+    expect(canDuplicateBeat(createEmptyPattern('Half', MEASURE_LIMIT / 2))).toBe(true)
+  })
+
+  it('leaves the original pattern untouched', () => {
+    const before = createEmptyPattern()
+    duplicateBeat(before)
+    expect(before.measures).toBe(1)
   })
 })
 

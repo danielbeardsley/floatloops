@@ -288,6 +288,37 @@ export function duplicateMeasure(pattern: Pattern, measureIndex: number): Patter
   })
 }
 
+/**
+ * Plays the whole beat twice, doubling its length. No note can hang off the
+ * end of a beat, so unlike duplicateMeasure there is nothing to cut.
+ */
+export function duplicateBeat(pattern: Pattern): Pattern {
+  if (!canDuplicateBeat(pattern)) return pattern
+
+  const length = totalStepsOf(pattern)
+
+  const tracks = pattern.tracks.map((track) => ({
+    ...track,
+    steps: [...track.steps, ...track.steps],
+  }))
+
+  const copies = pattern.melody.notes.map((note) => ({
+    ...note,
+    id: createId(),
+    start: note.start + length,
+  }))
+
+  return revise(pattern, {
+    measures: pattern.measures * 2,
+    tracks,
+    melody: { ...pattern.melody, notes: [...pattern.melody.notes, ...copies] },
+  })
+}
+
+export function canDuplicateBeat(pattern: Pattern): boolean {
+  return pattern.measures * 2 <= MEASURE_LIMIT
+}
+
 /** Whether a measure holds anything, so an empty one can be dropped silently. */
 export function measureHasHits(pattern: Pattern, measureIndex: number): boolean {
   const start = measureIndex * STEPS_PER_MEASURE
