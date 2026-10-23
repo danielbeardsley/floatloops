@@ -279,7 +279,7 @@ export function Grid() {
                   className="ruler__duplicate"
                   onClick={() => onDuplicateMeasure(measure)}
                   aria-label={`Duplicate measure ${measure + 1}`}
-                  title={`Play measure ${measure + 1} twice`}
+                  title={`Duplicate measure ${measure + 1}`}
                 >
                   &#x29C9;
                 </button>
