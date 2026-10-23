@@ -44,7 +44,7 @@ export type Preferences = {
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
-  autoSave: true,
+  autoSave: false,
   followPlayhead: true,
   melodyOpen: true,
   drumsOpen: true,

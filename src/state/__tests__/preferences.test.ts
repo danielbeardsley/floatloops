@@ -16,6 +16,10 @@ describe('loadPreferences', () => {
     expect(DEFAULT_PREFERENCES.followPlayhead).toBe(true)
   })
 
+  it('waits for the Save button by default', () => {
+    expect(DEFAULT_PREFERENCES.autoSave).toBe(false)
+  })
+
   it('reads back what was saved', () => {
     savePreferences({ ...DEFAULT_PREFERENCES, followPlayhead: false })
     expect(loadPreferences().followPlayhead).toBe(false)
