@@ -13,6 +13,7 @@ import {
   clipAt,
   clipRole,
   createEmptySong,
+  duplicateRow,
   removeBar,
   removeClip,
   removeRow,
@@ -329,5 +330,51 @@ describe('setRowPattern', () => {
   it('ignores a row that is not there', () => {
     const song = addRow(createEmptySong(), 'boom')
     expect(setRowPattern(song, 4, 'clap')).toEqual(song)
+  })
+})
+
+describe('duplicateRow', () => {
+  function arranged(): Song {
+    let song = addRow(addRow(createEmptySong(), 'boom'), 'clap')
+    song = addClip(song, 0, { start: 0, length: 2 })
+    song = addClip(song, 0, { start: 4, length: 1 })
+    song = setRowLevel(song, 0, 0.5)
+    return toggleRowMute(song, 0)
+  }
+
+  it('puts the copy directly under the row, playing the new beat', () => {
+    const song = duplicateRow(arranged(), 0, 'boom2')
+    expect(song.rows.map((row) => row.patternId)).toEqual(['boom', 'boom2', 'clap'])
+  })
+
+  it('places the copy in every bar the original plays, at the same level and mute', () => {
+    const before = arranged()
+    const copy = duplicateRow(before, 0, 'boom2').rows[1]
+    const placed = (clips: { start: number; length: number }[]) =>
+      clips.map(({ start, length }) => ({ start, length }))
+
+    expect(placed(copy.clips)).toEqual(placed(before.rows[0].clips))
+    expect(copy.level).toBe(0.5)
+    expect(copy.muted).toBe(true)
+  })
+
+  it('gives the row and its clips ids of their own', () => {
+    const song = duplicateRow(arranged(), 0, 'boom2')
+    const [original, copy] = song.rows
+    expect(copy.id).not.toBe(original.id)
+    for (const clip of copy.clips) {
+      expect(original.clips.map((c) => c.id)).not.toContain(clip.id)
+    }
+  })
+
+  it('does nothing once the song has all the rows it can hold', () => {
+    let song = createEmptySong()
+    for (let i = 0; i < MAX_SONG_ROWS; i += 1) song = addRow(song, `beat${i}`)
+    expect(duplicateRow(song, 0, 'copy')).toBe(song)
+  })
+
+  it('does nothing for a row that is not there', () => {
+    const song = arranged()
+    expect(duplicateRow(song, 5, 'copy')).toBe(song)
   })
 })

@@ -125,6 +125,29 @@ export function setRowPattern(song: Song, rowIndex: number, patternId: string): 
   return mapRow(song, rowIndex, (row) => ({ ...row, patternId }))
 }
 
+/**
+ * A second row playing a copy of the beat, in every bar the first one does.
+ *
+ * Sits directly under the row it came from, so the two read as a pair. The
+ * copy is the caller's to make: a row names a library beat, so the beat has
+ * to be saved before anything can point at it. Fresh ids throughout, or the
+ * two rows' clips would answer to each other's edits.
+ */
+export function duplicateRow(song: Song, rowIndex: number, patternId: string): Song {
+  const row = song.rows[rowIndex]
+  if (!row || !canAddRow(song)) return song
+
+  const copy: SongRow = {
+    ...row,
+    id: createId(),
+    patternId,
+    clips: row.clips.map((clip) => ({ ...clip, id: createId() })),
+  }
+  return revise(song, {
+    rows: [...song.rows.slice(0, rowIndex + 1), copy, ...song.rows.slice(rowIndex + 1)],
+  })
+}
+
 export function setRowLevel(song: Song, rowIndex: number, level: number): Song {
   return mapRow(song, rowIndex, (row) => ({ ...row, level: Math.min(1, Math.max(0, level)) }))
 }

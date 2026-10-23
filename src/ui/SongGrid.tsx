@@ -228,6 +228,25 @@ export function SongGrid() {
     [navigate],
   )
 
+  /**
+   * A copy of the row's beat on a row of its own, in all the same places --
+   * so a variation starts out sounding like the original, and changing it
+   * leaves the original and every other song playing it alone.
+   *
+   * The row is found again by id after the save, in case the rows moved
+   * while it was out.
+   */
+  const onDuplicateBeat = useCallback(async (rowId: string) => {
+    const library = useLibraryStore.getState()
+    const row = useSongStore.getState().song.rows.find((item) => item.id === rowId)
+    const pattern = row ? library.patternsById.get(row.patternId) : undefined
+    if (!pattern) return
+
+    const copy = await library.duplicate(pattern)
+    const rowIndex = useSongStore.getState().song.rows.findIndex((item) => item.id === rowId)
+    useSongStore.getState().duplicateRow(rowIndex, copy.id)
+  }, [])
+
   const columns = Array.from({ length: song.bars }, (_, i) => i)
 
   return (
@@ -339,7 +358,17 @@ export function SongGrid() {
                     </button>
                     <button
                       type="button"
-                      className="row__action row__action--remove"
+                      className="row__action row__action--glyph"
+                      onClick={() => void onDuplicateBeat(row.id)}
+                      disabled={!pattern || !canAddRow(song)}
+                      aria-label={`Duplicate ${name}`}
+                      title="A copy of this beat to change, playing in the same places"
+                    >
+                      &#x29C9;
+                    </button>
+                    <button
+                      type="button"
+                      className="row__action row__action--glyph row__action--remove"
                       onClick={() => removeRow(rowIndex)}
                       aria-label={`Remove ${name} from the song`}
                       title="Remove this row"

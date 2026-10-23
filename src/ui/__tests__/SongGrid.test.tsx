@@ -517,3 +517,48 @@ describe('adding a beat', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
+
+describe('duplicating a row', () => {
+  const COPY: Pattern = { ...BOOM, id: 'boom-copy', name: 'Boom Bap copy' }
+
+  /** The library's own copy goes through IndexedDB; this one is the same shape without it. */
+  function stubDuplicate() {
+    const duplicate = vi.fn(async () => {
+      useLibraryStore.setState((s) => ({
+        patterns: [...s.patterns, COPY],
+        patternsById: new Map([...s.patternsById, [COPY.id, COPY]]),
+      }))
+      return COPY
+    })
+    useLibraryStore.setState({ duplicate })
+    return duplicate
+  }
+
+  it('adds a copy of the beat under the row, in all the same places', async () => {
+    const duplicate = stubDuplicate()
+    let song = addRow(createEmptySong(), BOOM.id)
+    song = addClip(song, 0, { start: 0, length: 2 })
+    song = addClip(song, 0, { start: 5, length: 1 })
+    setSong(addRow(song, SHUFFLE.id))
+    renderGrid()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Duplicate Boom Bap' }))
+    })
+
+    expect(duplicate).toHaveBeenCalledWith(BOOM)
+    const rows = useSongStore.getState().song.rows
+    expect(rows.map((row) => row.patternId)).toEqual([BOOM.id, COPY.id, SHUFFLE.id])
+    expect(clipsOf(1).map(({ start, length }) => ({ start, length }))).toEqual([
+      { start: 0, length: 2 },
+      { start: 5, length: 1 },
+    ])
+    expect(screen.getByText('Boom Bap copy')).toBeInTheDocument()
+  })
+
+  it('will not copy a beat the library has lost', () => {
+    setSong(addRow(createEmptySong(), 'gone'))
+    renderGrid()
+    expect(screen.getByRole('button', { name: 'Duplicate Missing beat' })).toBeDisabled()
+  })
+})

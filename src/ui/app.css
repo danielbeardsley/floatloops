@@ -1042,7 +1042,8 @@
   opacity: 0.4;
 }
 
-.row__action--remove {
+/* A button that is a single mark rather than a word. */
+.row__action--glyph {
   padding: 3px 7px;
   font-size: 14px;
   line-height: 1;
@@ -1607,11 +1608,34 @@
   .grid--song {
     --label-w: 150px;
     --cell: 64px;
-    --row-h: 56px;
+    --row-h: 72px;
   }
 
   .grid--song .row__label {
     height: var(--row-h);
+  }
+
+  /*
+   * Mute, volume, Edit, duplicate and remove do not fit across 150px -- the
+   * volume was squeezed to its knob and remove ran out over the first bar.
+   * So the buttons drop to a line of their own under mute and volume. The
+   * blocks are as tall as this already, so no row gets any taller.
+   */
+  .row__label--song {
+    gap: 3px;
+  }
+
+  .row__label--song .row__controls {
+    flex-wrap: wrap;
+    gap: 4px 6px;
+  }
+
+  .grid--song .row__level {
+    flex: 1 1 80px;
+  }
+
+  .row__label--song .row__mute {
+    height: 24px;
   }
 
   /*
