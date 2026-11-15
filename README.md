@@ -27,6 +27,7 @@ way to get standalone mode.
 | Sections fold rather than scroll | Nine drums plus fourteen pitches will not fit a tablet, and folding beats hunting. |
 | Separate library screen, not a side panel | Matches how the app is meant to be navigated. |
 | A song names its beats rather than copying them | One source of truth: fixing a beat fixes every song using it. |
+| Backups are files, and loading one only merges | The browser may clear its storage; a file the user keeps cannot be. Merging by id, newer wins, means a load can never lose work, so it needs no warning. |
 | A refresh button in the bar | It runs on a kiosk: no address bar to reload from. It asks first if anything is unsaved. |
 | Auto-save on by default, but switchable | Children do not press Save. It is the same save the button does, so nothing new can be lost -- and it can be turned off. |
 | A shared beat asks before it changes every song | Auto-save made that propagation silent. The notice says who is listening; the prompt offers a fork instead of a warning you can only obey. |
@@ -49,6 +50,9 @@ src/
     arrangement.ts   what the scheduler plays: a length, and who sounds where
     migrate.ts       turns anything out of storage into a usable Pattern or Song
     storage.ts       IndexedDB CRUD; the only place that touches the database
+    backup.ts        the backup file format: write it, read it back safely
+    persistence.ts   asks the browser not to clear saved work
+    lastBackup.ts    when this device last saved a backup, for the reminder
     preferences.ts   per-device settings in localStorage, guarded reads
     patternStore.ts  zustand store for the beat being edited
     songStore.ts     zustand store for the song being arranged
@@ -99,6 +103,30 @@ switching the setting on *does* count, so work already on screen gets picked
 up. The unsaved warnings all stay exactly as they were: with auto-save off, or
 in the moment before it fires, they are still what stands between a reload and
 lost work.
+
+### Backups
+
+**Save backup** on the library screen writes one JSON file: every beat, every
+song and the device's preferences. A tablet gets the share sheet (Save to
+Files, the cloud drives); a computer gets a download. **Load backup** merges a
+file back in through `mergeLibrary`, in one transaction:
+
+- Records are matched by **id**, and keep it -- song rows name beats by id.
+  A record in the file with no id is skipped rather than given a new one,
+  which would duplicate it on every load.
+- A stored copy is replaced only by one with a **later `updatedAt`**, and the
+  timestamps are written as they were, not stamped afresh. Nothing is deleted.
+- Every record passes through `migratePattern` / `migrateSong` on the way in,
+  so an old backup loads the way an old save does. The envelope has its own
+  `format` number; a file from a newer format is refused with a message.
+- A beat or song open in an editor with no edits of its own follows the
+  restored copy, so its next save cannot put the old version back.
+
+The first save of each visit also calls `navigator.storage.persist()`, and the
+backup section reports the answer -- or, in Safari on iOS outside the Home
+Screen app, says how to install it, that being what stops the seven-day
+eviction. It also shows when this device last saved a backup, and stands out
+once that is a fortnight ago or never.
 
 ## Songs
 
@@ -455,8 +483,12 @@ corner turns that off; the choice is remembered per device in localStorage.
   naming the cause. Hot reload triggers this too, since the previous module
   instance's connection outlives it.
 - **Safari evicts IndexedDB after 7 days of non-use** for sites that are not
-  installed to the home screen. Saved patterns need the install, plus an export
-  escape hatch.
+  installed to the home screen. The library's backup section says so in Safari
+  on iOS, and backup files are the escape hatch. `navigator.standalone` being
+  `false` (not `undefined`) is how iOS Safari outside the Home Screen is told
+  apart.
+- **jsdom's `Blob` has no `.text()`.** `readText` in `ui/backup.ts` falls back
+  to `FileReader`, which also covers Safari before 14.
 - **Background tabs throttle `setTimeout` to 1/sec**, which will stall the
   scheduler. The tick moves into a Web Worker in phase 7.
 - **Never put the playhead in React state.** At four measures that is 512 cells
