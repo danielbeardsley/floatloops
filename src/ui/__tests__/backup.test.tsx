@@ -185,3 +185,42 @@ describe('the backup section', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Load backup' })).toBeEnabled())
   })
 })
+
+describe('how safe the library is', () => {
+  function renderSection() {
+    return render(
+      <MemoryRouter>
+        <LibraryScreen />
+      </MemoryRouter>,
+    )
+  }
+
+  afterEach(() => {
+    Object.defineProperty(navigator, 'storage', { value: undefined, configurable: true })
+    Object.defineProperty(navigator, 'standalone', { value: undefined, configurable: true })
+  })
+
+  it('says when the browser has agreed to keep it', async () => {
+    Object.defineProperty(navigator, 'storage', {
+      value: { persisted: () => Promise.resolve(true) },
+      configurable: true,
+    })
+    renderSection()
+    expect(await screen.findByText(/agreed not to clear them/)).toBeInTheDocument()
+  })
+
+  it('says when it has not', async () => {
+    Object.defineProperty(navigator, 'storage', {
+      value: { persisted: () => Promise.resolve(false) },
+      configurable: true,
+    })
+    renderSection()
+    expect(await screen.findByText(/may still clear them/)).toBeInTheDocument()
+  })
+
+  it('tells Safari on iOS to add the app to the Home Screen', async () => {
+    Object.defineProperty(navigator, 'standalone', { value: false, configurable: true })
+    renderSection()
+    expect(await screen.findByText(/Add to Home Screen/)).toBeInTheDocument()
+  })
+})

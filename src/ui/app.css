@@ -1265,6 +1265,10 @@
 
 /* Empty until there is something to say, but holding its line meanwhile so
    the buttons do not jump when there is. */
+.backup .backup__warning {
+  color: var(--text);
+}
+
 .backup .backup__status {
   min-height: 1.5em;
   margin-top: 12px;

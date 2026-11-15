@@ -7,6 +7,7 @@ import {
   savePattern,
   saveSong,
 } from './storage'
+import { requestPersistence } from './persistence'
 import { createId, type Pattern } from './schema'
 import type { Song } from './song'
 
@@ -75,6 +76,7 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
 
   save: async (pattern) => {
     const saved = await savePattern(pattern)
+    void requestPersistence()
     await get().refresh()
     return saved
   },
@@ -88,6 +90,7 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
 
   saveSong: async (song) => {
     const saved = await saveSong(song)
+    void requestPersistence()
     await get().refresh()
     return saved
   },

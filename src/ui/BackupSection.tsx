@@ -1,5 +1,11 @@
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { BackupError } from '../state/backup'
+import {
+  isIosBrowserTab,
+  requestPersistence,
+  storagePersistence,
+  type Persistence,
+} from '../state/persistence'
 import { describeLoad, loadBackupFile, saveBackup } from './backup'
 
 type Status = { text: string; error?: boolean } | null
@@ -8,6 +14,33 @@ function failure(error: unknown, fallback: string): Status {
   if (error instanceof BackupError) return { text: error.message, error: true }
   if (error instanceof Error && error.message) return { text: error.message, error: true }
   return { text: fallback, error: true }
+}
+
+/**
+ * How safe the work is where it is. Safari on iOS gets its own warning, being
+ * the one browser that throws saved work away on a timer rather than only
+ * when space runs out -- and the one where the fix is in the user's hands.
+ */
+function Safety({ persistence }: { persistence: Persistence }) {
+  if (isIosBrowserTab()) {
+    return (
+      <p className="library__message backup__warning">
+        On iPad and iPhone, Safari clears saved work after a week without a visit. To keep it, add
+        FloatLoops to your Home Screen: tap Share, then Add to Home Screen.
+      </p>
+    )
+  }
+  if (persistence === 'persisted') {
+    return <p className="library__message">This browser has agreed not to clear them.</p>
+  }
+  if (persistence === 'best-effort') {
+    return (
+      <p className="library__message">
+        This browser may still clear them to free up space, so a backup is worth keeping.
+      </p>
+    )
+  }
+  return null
 }
 
 /**
@@ -20,6 +53,11 @@ export function BackupSection() {
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<Status>(null)
+  const [persistence, setPersistence] = useState<Persistence>('unknown')
+
+  useEffect(() => {
+    void storagePersistence().then(setPersistence)
+  }, [])
 
   const onSave = async () => {
     setBusy(true)
@@ -46,6 +84,8 @@ export function BackupSection() {
     setStatus(null)
     try {
       setStatus({ text: describeLoad(await loadBackupFile(file)) })
+      // Loading asks for persistence; this is the answer to that same request.
+      void requestPersistence().then(setPersistence)
     } catch (error) {
       setStatus(failure(error, 'Could not load that backup.'))
     } finally {
@@ -65,6 +105,7 @@ export function BackupSection() {
         Your beats and songs are kept in this browser. Save a backup file to keep them safe, or to
         move them to another device. Loading a backup only adds to what is here.
       </p>
+      <Safety persistence={persistence} />
 
       <div className="backup__actions">
         <button type="button" className="button" onClick={() => void onSave()} disabled={busy}>

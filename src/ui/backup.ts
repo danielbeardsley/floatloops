@@ -3,6 +3,7 @@ import { useLibraryStore } from '../state/libraryStore'
 import { usePatternStore } from '../state/patternStore'
 import { preferencesOf, useSettingsStore } from '../state/settingsStore'
 import { useSongStore } from '../state/songStore'
+import { requestPersistence } from '../state/persistence'
 import { exportLibrary, mergeLibrary, type MergeResult } from '../state/storage'
 import { isUnsaved, songIsUnsaved } from './unsaved'
 
@@ -79,6 +80,7 @@ export async function loadBackup(parsed: ParsedBackup): Promise<LoadOutcome> {
   const songInSync = savedSong !== undefined && !songIsUnsaved(song, savedSong)
 
   const merge = await mergeLibrary(parsed.library)
+  void requestPersistence()
   if (parsed.preferences) useSettingsStore.getState().replaceAll(parsed.preferences)
   await useLibraryStore.getState().refresh()
 

@@ -4,6 +4,7 @@ import { useLibraryStore } from '../libraryStore'
 import { closeStorage, listPatterns } from '../storage'
 import { createEmptyPattern, demoPattern, isStepOn } from '../schema'
 import * as storage from '../storage'
+import { resetPersistenceRequest } from '../persistence'
 
 async function wipe() {
   await closeStorage()
@@ -75,3 +76,24 @@ describe('when storage is unavailable', () => {
     vi.restoreAllMocks()
   })
 })
+
+describe('keeping saved work', () => {
+  it('asks the browser to keep it once there is something saved', async () => {
+    resetPersistenceRequest()
+    const persist = vi.fn().mockResolvedValue(true)
+    Object.defineProperty(navigator, 'storage', {
+      value: { persisted: vi.fn().mockResolvedValue(false), persist },
+      configurable: true,
+    })
+
+    await useLibraryStore.getState().save(demoPattern())
+    await waitForAsk()
+    expect(persist).toHaveBeenCalledOnce()
+
+    Object.defineProperty(navigator, 'storage', { value: undefined, configurable: true })
+  })
+})
+
+function waitForAsk() {
+  return new Promise((resolve) => setTimeout(resolve, 0))
+}
