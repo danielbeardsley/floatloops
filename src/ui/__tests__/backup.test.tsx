@@ -224,3 +224,34 @@ describe('how safe the library is', () => {
     expect(await screen.findByText(/Add to Home Screen/)).toBeInTheDocument()
   })
 })
+
+describe('the reminder', () => {
+  function renderSection() {
+    return render(
+      <MemoryRouter>
+        <LibraryScreen />
+      </MemoryRouter>,
+    )
+  }
+
+  it('says nothing about backups while there is nothing to back up', async () => {
+    renderSection()
+    await screen.findByText(/nothing saved yet/i)
+    expect(screen.queryByText(/no backup saved/i)).not.toBeInTheDocument()
+  })
+
+  it('nudges a library that has never been backed up, until it is', async () => {
+    await savePattern({ ...demoPattern(), id: 'boom' })
+    vi.stubGlobal('URL', { ...URL, createObjectURL: () => 'blob:backup', revokeObjectURL: () => {} })
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    renderSection()
+    expect(await screen.findByText('No backup saved on this device yet.')).toBeInTheDocument()
+    const save = screen.getByRole('button', { name: 'Save backup' })
+    expect(save).toHaveClass('button--primary')
+
+    fireEvent.click(save)
+    expect(await screen.findByText('Last backup: today.')).toBeInTheDocument()
+    expect(save).not.toHaveClass('button--primary')
+  })
+})

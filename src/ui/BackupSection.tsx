@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { BackupError } from '../state/backup'
+import { backupIsStale, describeLastBackup, loadLastBackup } from '../state/lastBackup'
+import { useLibraryStore } from '../state/libraryStore'
 import {
   isIosBrowserTab,
   requestPersistence,
@@ -54,6 +56,10 @@ export function BackupSection() {
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<Status>(null)
   const [persistence, setPersistence] = useState<Persistence>('unknown')
+  const [lastBackup, setLastBackup] = useState(loadLastBackup)
+  const hasWork = useLibraryStore((s) => s.patterns.length > 0 || s.songs.length > 0)
+  // An empty library has nothing to lose, so it is not nagged about it.
+  const stale = hasWork && backupIsStale(lastBackup)
 
   useEffect(() => {
     void storagePersistence().then(setPersistence)
@@ -66,6 +72,7 @@ export function BackupSection() {
       const outcome = await saveBackup()
       if (outcome !== 'cancelled') {
         setStatus({ text: 'Backup saved. Keep the file somewhere safe.' })
+        setLastBackup(loadLastBackup())
       }
     } catch (error) {
       setStatus(failure(error, 'Could not make a backup.'))
@@ -106,9 +113,19 @@ export function BackupSection() {
         move them to another device. Loading a backup only adds to what is here.
       </p>
       <Safety persistence={persistence} />
+      {hasWork ? (
+        <p className={`library__message${stale ? ' backup__warning' : ''}`}>
+          {describeLastBackup(lastBackup)}
+        </p>
+      ) : null}
 
       <div className="backup__actions">
-        <button type="button" className="button" onClick={() => void onSave()} disabled={busy}>
+        <button
+          type="button"
+          className={`button${stale ? ' button--primary' : ''}`}
+          onClick={() => void onSave()}
+          disabled={busy}
+        >
           Save backup
         </button>
         <button

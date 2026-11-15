@@ -3,6 +3,7 @@ import { useLibraryStore } from '../state/libraryStore'
 import { usePatternStore } from '../state/patternStore'
 import { preferencesOf, useSettingsStore } from '../state/settingsStore'
 import { useSongStore } from '../state/songStore'
+import { saveLastBackup } from '../state/lastBackup'
 import { requestPersistence } from '../state/persistence'
 import { exportLibrary, mergeLibrary, type MergeResult } from '../state/storage'
 import { isUnsaved, songIsUnsaved } from './unsaved'
@@ -49,6 +50,7 @@ export async function saveBackup(): Promise<SaveOutcome> {
   if (shouldShare(file)) {
     try {
       await navigator.share({ files: [file], title: 'FloatLoops backup' })
+      saveLastBackup()
       return 'shared'
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return 'cancelled'
@@ -57,6 +59,7 @@ export async function saveBackup(): Promise<SaveOutcome> {
   }
 
   download(file)
+  saveLastBackup()
   return 'downloaded'
 }
 
