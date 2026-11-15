@@ -1254,6 +1254,22 @@
   margin-bottom: 0;
 }
 
+/* --- backup -------------------------------------------------------------- */
+
+.backup__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* Empty until there is something to say, but holding its line meanwhile so
+   the buttons do not jump when there is. */
+.backup .backup__status {
+  min-height: 1.5em;
+  margin-top: 12px;
+}
+
 /* --- a beat that belongs to a song --------------------------------------- */
 
 .in-song {

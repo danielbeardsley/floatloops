@@ -6,6 +6,7 @@ import { useSongStore } from '../state/songStore'
 import { stop } from '../state/transport'
 import { createEmptyPattern } from '../state/schema'
 import { createEmptySong } from '../state/song'
+import { BackupSection } from './BackupSection'
 import { PatternCard } from './PatternCard'
 import { SongCard } from './SongCard'
 import { useStopOnLeave } from './useStopOnLeave'
@@ -94,6 +95,8 @@ export function LibraryScreen() {
           ))}
         </div>
       </section>
+
+      <BackupSection />
     </div>
   )
 }
