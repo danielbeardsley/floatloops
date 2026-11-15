@@ -11,11 +11,13 @@ export type SettingsStore = Preferences & {
   setMelodyView: (melodyView: MelodyView) => void
   setMelodyKey: (melodyKey: number) => void
   setMelodyNarrow: (melodyNarrow: boolean) => void
+  /** Every preference at once, as when a backup is loaded. */
+  replaceAll: (preferences: Preferences) => void
 }
 
-/** Writes the whole preference set, so one setting cannot drop another. */
-function persist(state: SettingsStore, change: Partial<Preferences>): Preferences {
-  const next: Preferences = {
+/** Just the preferences, without the setters riding along with them. */
+export function preferencesOf(state: Preferences): Preferences {
+  return {
     autoSave: state.autoSave,
     followPlayhead: state.followPlayhead,
     melodyOpen: state.melodyOpen,
@@ -24,8 +26,12 @@ function persist(state: SettingsStore, change: Partial<Preferences>): Preference
     melodyView: state.melodyView,
     melodyKey: state.melodyKey,
     melodyNarrow: state.melodyNarrow,
-    ...change,
   }
+}
+
+/** Writes the whole preference set, so one setting cannot drop another. */
+function persist(state: SettingsStore, change: Partial<Preferences>): Preferences {
+  const next: Preferences = { ...preferencesOf(state), ...change }
   savePreferences(next)
   return next
 }
@@ -41,4 +47,5 @@ export const useSettingsStore = create<SettingsStore>()((set) => ({
   setMelodyView: (melodyView) => set((s) => persist(s, { melodyView })),
   setMelodyKey: (melodyKey) => set((s) => persist(s, { melodyKey })),
   setMelodyNarrow: (melodyNarrow) => set((s) => persist(s, { melodyNarrow })),
+  replaceAll: (preferences) => set((s) => persist(s, preferences)),
 }))

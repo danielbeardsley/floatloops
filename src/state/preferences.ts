@@ -63,29 +63,36 @@ export function loadPreferences(): Preferences {
   try {
     const raw = window.localStorage.getItem(KEY)
     if (!raw) return DEFAULT_PREFERENCES
-
-    const parsed: unknown = JSON.parse(raw)
-    if (typeof parsed !== 'object' || parsed === null) return DEFAULT_PREFERENCES
-
-    const stored = parsed as Partial<Record<keyof Preferences, unknown>>
-    const read = (key: FlagKey) =>
-      typeof stored[key] === 'boolean' ? (stored[key] as boolean) : DEFAULT_PREFERENCES[key]
-
-    // Anything that is not a plain flag is checked against what it means
-    // rather than its type: a view this build has never heard of, or a key
-    // outside the octave, is a preference worth forgetting.
-    return {
-      autoSave: read('autoSave'),
-      followPlayhead: read('followPlayhead'),
-      melodyOpen: read('melodyOpen'),
-      drumsOpen: read('drumsOpen'),
-      showOthers: read('showOthers'),
-      melodyView: isMelodyView(stored.melodyView) ? stored.melodyView : DEFAULT_MELODY_VIEW,
-      melodyKey: isMelodyKey(stored.melodyKey) ? stored.melodyKey : DEFAULT_MELODY_KEY,
-      melodyNarrow: read('melodyNarrow'),
-    }
+    return readPreferences(JSON.parse(raw))
   } catch {
     return DEFAULT_PREFERENCES
+  }
+}
+
+/**
+ * Makes a full set of preferences out of anything at all -- what came back
+ * out of localStorage, or what a backup file says. Whatever is missing or
+ * wrong falls back to the default, one preference at a time.
+ */
+export function readPreferences(parsed: unknown): Preferences {
+  if (typeof parsed !== 'object' || parsed === null) return DEFAULT_PREFERENCES
+
+  const stored = parsed as Partial<Record<keyof Preferences, unknown>>
+  const read = (key: FlagKey) =>
+    typeof stored[key] === 'boolean' ? (stored[key] as boolean) : DEFAULT_PREFERENCES[key]
+
+  // Anything that is not a plain flag is checked against what it means
+  // rather than its type: a view this build has never heard of, or a key
+  // outside the octave, is a preference worth forgetting.
+  return {
+    autoSave: read('autoSave'),
+    followPlayhead: read('followPlayhead'),
+    melodyOpen: read('melodyOpen'),
+    drumsOpen: read('drumsOpen'),
+    showOthers: read('showOthers'),
+    melodyView: isMelodyView(stored.melodyView) ? stored.melodyView : DEFAULT_MELODY_VIEW,
+    melodyKey: isMelodyKey(stored.melodyKey) ? stored.melodyKey : DEFAULT_MELODY_KEY,
+    melodyNarrow: read('melodyNarrow'),
   }
 }
 
