@@ -5,6 +5,8 @@ import {
   closeStorage,
   deletePattern,
   deleteSong,
+  exportLibrary,
+  mergeLibrary,
   getPattern,
   getSong,
   listPatterns,
@@ -189,5 +191,61 @@ describe('songs', () => {
     await saveSong(createEmptySong('Fine'))
 
     expect((await listSongs()).map((s) => s.name)).toEqual(['Fine'])
+  })
+})
+
+describe('backups', () => {
+  it('exports every beat and song it can read', async () => {
+    await savePattern({ ...demoPattern(), id: 'beat' })
+    await saveSong({ ...createEmptySong('Tune'), id: 'tune' })
+    await writeRaw({ id: 'from-the-future', version: 99 })
+
+    const library = await exportLibrary()
+    expect(library.patterns.map((p) => p.id)).toEqual(['beat'])
+    expect(library.songs.map((s) => s.id)).toEqual(['tune'])
+  })
+
+  it('adds what the device does not have, keeping ids and timestamps', async () => {
+    const pattern = { ...demoPattern(), id: 'beat', createdAt: 5, updatedAt: 10 }
+    const song = { ...addRow(createEmptySong('Tune'), 'beat'), id: 'tune', createdAt: 6, updatedAt: 11 }
+
+    const result = await mergeLibrary({ patterns: [pattern], songs: [song] })
+    expect(result.patterns).toEqual({ added: 1, updated: 0, unchanged: 0 })
+    expect(result.songs).toEqual({ added: 1, updated: 0, unchanged: 0 })
+
+    expect(await getPattern('beat')).toMatchObject({ createdAt: 5, updatedAt: 10 })
+    expect((await getSong('tune'))?.rows[0].patternId).toBe('beat')
+  })
+
+  it('replaces a copy only with one edited more recently', async () => {
+    await writeRaw({ ...createEmptyPattern('Here'), id: 'beat', updatedAt: 100 })
+
+    const older = { ...createEmptyPattern('Older'), id: 'beat', updatedAt: 50 }
+    expect((await mergeLibrary({ patterns: [older], songs: [] })).patterns).toEqual({
+      added: 0,
+      updated: 0,
+      unchanged: 1,
+    })
+    expect((await getPattern('beat'))?.name).toBe('Here')
+
+    const newer = { ...createEmptyPattern('Newer'), id: 'beat', updatedAt: 150 }
+    expect((await mergeLibrary({ patterns: [newer], songs: [] })).patterns.updated).toBe(1)
+    expect((await getPattern('beat'))?.name).toBe('Newer')
+  })
+
+  it('leaves alone everything the backup does not mention', async () => {
+    await savePattern({ ...createEmptyPattern('Mine'), id: 'mine' })
+    await mergeLibrary({ patterns: [{ ...createEmptyPattern('Theirs'), id: 'theirs' }], songs: [] })
+
+    expect((await listPatterns()).map((p) => p.id).sort()).toEqual(['mine', 'theirs'])
+  })
+
+  it('writes nothing at all if it fails part way', async () => {
+    const good = { ...createEmptyPattern('Good'), id: 'good' }
+    // An id IndexedDB will not accept as a key fails the put, after the good one.
+    const bad = { ...createEmptyPattern('Bad'), id: {} as unknown as string }
+
+    await expect(mergeLibrary({ patterns: [good, bad], songs: [] })).rejects.toBeDefined()
+    expect(await listPatterns()).toEqual([])
   })
 })

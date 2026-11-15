@@ -121,6 +121,80 @@ export async function deleteSong(id: string): Promise<void> {
   await (await db()).delete(SONG_STORE, id)
 }
 
+/* --- backups ------------------------------------------------------------- */
+
+export type Library = { patterns: Pattern[]; songs: Song[] }
+
+/** Everything this build can read, beats and songs both, for a backup file. */
+export async function exportLibrary(): Promise<Library> {
+  const [patterns, songs] = await Promise.all([listPatterns(), listSongs()])
+  return { patterns, songs }
+}
+
+export type MergeCount = { added: number; updated: number; unchanged: number }
+export type MergeResult = { patterns: MergeCount; songs: MergeCount }
+
+/**
+ * Writes a backup into the library without ever losing anything already here.
+ *
+ * Records are matched by id -- they have to keep their ids, because song rows
+ * name beats by them. Something the device does not have is added; something
+ * it has is replaced only by a copy edited more recently. Nothing is deleted,
+ * so loading an old backup onto a device with newer work is harmless.
+ *
+ * Unlike savePattern, the timestamps are kept as they were: stamping them now
+ * would make every imported copy the newest, and the next import would let a
+ * stale backup win.
+ *
+ * One transaction across both stores, so a failure part way leaves the
+ * library as it was rather than half restored.
+ */
+export async function mergeLibrary(library: Library): Promise<MergeResult> {
+  const transaction = (await db()).transaction([STORE, SONG_STORE], 'readwrite')
+  // Awaited on success below. On failure the error that matters is the one
+  // thrown, and an abort rejecting this as well is not a second problem.
+  transaction.done.catch(() => {})
+
+  async function merge<T extends { id: string; updatedAt: number }>(
+    storeName: typeof STORE | typeof SONG_STORE,
+    items: T[],
+    read: (raw: unknown) => T | null,
+  ): Promise<MergeCount> {
+    const store = transaction.objectStore(storeName)
+    const count: MergeCount = { added: 0, updated: 0, unchanged: 0 }
+
+    for (const item of items) {
+      const existing = read(await store.get(item.id))
+      if (existing && existing.updatedAt >= item.updatedAt) {
+        count.unchanged++
+        continue
+      }
+      await store.put(item)
+      if (existing) count.updated++
+      else count.added++
+    }
+    return count
+  }
+
+  try {
+    const [patterns, songs] = await Promise.all([
+      merge(STORE, library.patterns, migratePattern),
+      merge(SONG_STORE, library.songs, migrateSong),
+    ])
+    await transaction.done
+    return { patterns, songs }
+  } catch (error) {
+    // A transaction only rolls back on its own when a request fails. Anything
+    // else going wrong part way would otherwise commit the half it had done.
+    try {
+      transaction.abort()
+    } catch {
+      // Already finished or already aborted; either way there is nothing to undo.
+    }
+    throw error
+  }
+}
+
 /**
  * Closes the connection and forgets it. Without the close, anything trying to
  * delete or upgrade the database blocks forever waiting on this handle.
